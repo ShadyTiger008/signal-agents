@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { PostCard } from "@/components/post-card";
-import { ReplyComposer } from "@/components/reply-composer";
+import { ThreadRepliesSection } from "@/components/thread-replies-section";
 import { AgentAvatar } from "@/components/agent-avatar";
 import { PostTypeBadge } from "@/components/post-type-badge";
-import { LikeButton } from "@/components/like-button";
+
 import { formatRelativeTime } from "@/lib/utils";
 import { MessageSquare, ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 interface Props {
   params: Promise<{ id: string }>;
 }
+
+export const revalidate = 0;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -48,15 +50,20 @@ export default async function PostDetailPage({ params }: Props) {
   const { id } = await params;
   const supabase = await createClient();
 
-  // 1. Fetch User Auth state
-  const { data: { user } } = await supabase.auth.getUser();
+  // 1. Fetch User Auth state & Profile
+  const userAndProfile = await getCurrentUser();
+  const user = userAndProfile?.user || null;
+  const currentUserProfile = userAndProfile?.profile || null;
   const isAuthenticated = !!user;
+
 
   // 2. Fetch target post
   const { data: post, error } = await supabase
     .from('posts')
     .select(`
       *,
+      likes:likes(count),
+      replies:posts!parent_post_id(count),
       agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
       profile:profiles!profile_id(display_name, avatar_url)
     `)
@@ -74,6 +81,8 @@ export default async function PostDetailPage({ params }: Props) {
           .from('posts')
           .select(`
             *,
+            likes:likes(count),
+            replies:posts!parent_post_id(count),
             agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
             profile:profiles!profile_id(display_name, avatar_url)
           `)
@@ -84,6 +93,8 @@ export default async function PostDetailPage({ params }: Props) {
       .from('posts')
       .select(`
         *,
+        likes:likes(count),
+        replies:posts!parent_post_id(count),
         agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
         profile:profiles!profile_id(display_name, avatar_url),
         parent_post:posts!parent_post_id(
@@ -95,30 +106,111 @@ export default async function PostDetailPage({ params }: Props) {
       .order('created_at', { ascending: true })
   ]);
 
-  const parentPost = parentResult.data;
+  const parentPost = parentResult.data as any;
   const replies = repliesResult.data || [];
 
-  // 4. Batch query likes for all posts shown
+  // 4. Fetch Recommended Posts of the same category (post_type)
+  const { data: recommendedPostsData } = await supabase
+    .from('posts')
+    .select(`
+      *,
+      likes:likes(count),
+      replies:posts!parent_post_id(count),
+      agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
+      profile:profiles!profile_id(display_name, avatar_url),
+      parent_post:posts!parent_post_id(
+        agent:agents(handle),
+        profile:profiles!profile_id(display_name)
+      )
+    `)
+    .eq('post_type', post.post_type)
+    .neq('id', post.id)
+    .is('parent_post_id', null)
+    .order('created_at', { ascending: false })
+    .limit(3);
+
+  let recommendedPosts = recommendedPostsData || [];
+  if (recommendedPosts.length < 3) {
+    const { data: fallbackPosts } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        likes:likes(count),
+        replies:posts!parent_post_id(count),
+        agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
+        profile:profiles!profile_id(display_name, avatar_url),
+        parent_post:posts!parent_post_id(
+          agent:agents(handle),
+          profile:profiles!profile_id(display_name)
+        )
+      `)
+      .neq('id', post.id)
+      .is('parent_post_id', null)
+      .order('created_at', { ascending: false })
+      .limit(3 - recommendedPosts.length);
+      
+    if (fallbackPosts) {
+      recommendedPosts = [...recommendedPosts, ...fallbackPosts];
+    }
+  }
+
+  // 5. Batch query likes and follows for all posts shown
   const postIds = [post.id];
   if (parentPost) postIds.push(parentPost.id);
   replies.forEach(r => postIds.push(r.id));
+  recommendedPosts.forEach(r => postIds.push(r.id));
 
   let likedPostIds: string[] = [];
+  let followedAgentIds: string[] = [];
   if (user) {
-    const { data: likesData } = await supabase
-      .from('likes')
-      .select('post_id')
-      .eq('profile_id', user.id)
-      .in('post_id', postIds);
-    if (likesData) {
-      likedPostIds = likesData.map(l => l.post_id);
+    const [likesResult, followsResult] = await Promise.all([
+      supabase
+        .from('likes')
+        .select('post_id')
+        .eq('profile_id', user.id)
+        .in('post_id', postIds),
+      supabase
+        .from('follows')
+        .select('agent_id')
+        .eq('follower_profile_id', user.id)
+    ]);
+    if (likesResult.data) {
+      likedPostIds = likesResult.data.map(l => l.post_id);
+    }
+    if (followsResult.data) {
+      followedAgentIds = followsResult.data.map(f => f.agent_id);
     }
   }
 
   // Composed post objects
-  const mainPostWithLike = { ...post, has_liked: likedPostIds.includes(post.id) };
-  const parentPostWithLike = parentPost ? { ...parentPost, has_liked: likedPostIds.includes(parentPost.id) } : null;
-  const repliesWithLike = replies.map(r => ({ ...r, has_liked: likedPostIds.includes(r.id) }));
+  const mainPostWithLike = { 
+    ...post, 
+    like_count: post.likes?.[0]?.count ?? 0,
+    reply_count: post.replies?.[0]?.count ?? 0,
+    has_liked: likedPostIds.includes(post.id),
+    is_following_agent: post.agent_id ? followedAgentIds.includes(post.agent_id) : false 
+  };
+  const parentPostWithLike = parentPost ? { 
+    ...parentPost, 
+    like_count: parentPost.likes?.[0]?.count ?? 0,
+    reply_count: parentPost.replies?.[0]?.count ?? 0,
+    has_liked: likedPostIds.includes(parentPost.id),
+    is_following_agent: parentPost.agent_id ? followedAgentIds.includes(parentPost.agent_id) : false 
+  } : null;
+  const repliesWithLike = replies.map(r => ({ 
+    ...r, 
+    like_count: r.likes?.[0]?.count ?? 0,
+    reply_count: r.replies?.[0]?.count ?? 0,
+    has_liked: likedPostIds.includes(r.id),
+    is_following_agent: r.agent_id ? followedAgentIds.includes(r.agent_id) : false 
+  }));
+  const recommendedPostsWithLike = recommendedPosts.map(r => ({
+    ...r,
+    like_count: r.likes?.[0]?.count ?? 0,
+    reply_count: r.replies?.[0]?.count ?? 0,
+    has_liked: likedPostIds.includes(r.id),
+    is_following_agent: r.agent_id ? followedAgentIds.includes(r.agent_id) : false
+  }));
 
   // Main post metadata
   const isAgent = !!post.agent_id;
@@ -224,62 +316,36 @@ export default async function PostDetailPage({ params }: Props) {
         <div className="text-xs text-muted-foreground font-mono select-none">
           {formattedDate}
         </div>
-
-        {/* Actions row */}
-        <div className="flex items-center space-x-4 border-t border-b border-zinc-100 dark:border-zinc-900 py-2.5 select-none">
-          <LikeButton 
-            postId={post.id} 
-            initialLikeCount={post.like_count} 
-            initialHasLiked={mainPostWithLike.has_liked} 
-            isAuthenticated={isAuthenticated}
-          />
-          <div className="flex items-center space-x-1 py-1.5 px-2 text-zinc-500 dark:text-zinc-400">
-            <MessageSquare className="w-4 h-4" />
-            <span className="font-mono text-xs">{post.reply_count}</span>
-          </div>
-        </div>
       </div>
+      
+      <ThreadRepliesSection
+        postId={post.id}
+        initialReplyCount={post.reply_count}
+        initialReplies={repliesWithLike}
+        isAuthenticated={isAuthenticated}
+        currentUserProfile={currentUserProfile}
+        mainPostHasLiked={mainPostWithLike.has_liked}
+        mainPostLikeCount={post.like_count}
+      />
 
-      {/* Reply Composer (Authenticated users only) */}
-      {isAuthenticated ? (
-        <ReplyComposer parentPostId={post.id} />
-      ) : (
-        <div className="py-6 border-b border-zinc-150 dark:border-zinc-900 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Sign in to join the conversation and reply to this post.
-          </p>
-          <Link 
-            href="/login" 
-            className="inline-block text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline"
-          >
-            Sign in with Google →
-          </Link>
-        </div>
-      )}
-
-      {/* Replies list */}
-      <div className="space-y-1">
-        <h3 className="text-xs font-bold font-mono tracking-wider text-muted-foreground uppercase pt-2 select-none">
-          Replies ({replies.length})
-        </h3>
-        
-        {repliesWithLike.length === 0 ? (
-          <div className="py-12 text-center text-sm font-mono text-muted-foreground select-none">
-            No replies yet.
-          </div>
-        ) : (
+      {/* Recommended Posts Section */}
+      {recommendedPostsWithLike.length > 0 && (
+        <div className="pt-8 border-t border-zinc-150 dark:border-zinc-900 space-y-4">
+          <h3 className="text-xs font-bold font-mono tracking-wider text-muted-foreground uppercase select-none">
+            Recommended Posts (Category: {post.post_type})
+          </h3>
           <div className="flex flex-col">
-            {repliesWithLike.map((reply) => (
-              <PostCard 
-                key={reply.id} 
-                post={reply as any} 
-                isAuthenticated={isAuthenticated} 
-                compact 
+            {recommendedPostsWithLike.map((recPost) => (
+              <PostCard
+                key={recPost.id}
+                post={recPost}
+                isAuthenticated={isAuthenticated}
               />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
+
   );
 }

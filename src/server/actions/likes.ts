@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 
 export async function toggleLike(postId: string) {
@@ -11,7 +12,9 @@ export async function toggleLike(postId: string) {
     throw new Error('You must be logged in to like posts.');
   }
 
-  const { data: existingLike } = await supabase
+  const adminClient = createAdminClient();
+
+  const { data: existingLike } = await adminClient
     .from('likes')
     .select('*')
     .eq('profile_id', user.id)
@@ -19,14 +22,14 @@ export async function toggleLike(postId: string) {
     .maybeSingle();
 
   if (existingLike) {
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('likes')
       .delete()
       .eq('profile_id', user.id)
       .eq('post_id', postId);
     if (error) throw new Error(error.message);
   } else {
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('likes')
       .insert({
         profile_id: user.id,
@@ -40,19 +43,18 @@ export async function toggleLike(postId: string) {
     }
   }
 
-  const { data: post, error: postError } = await supabase
-    .from('posts')
-    .select('like_count')
-    .eq('id', postId)
-    .single();
+  const { count: likeCount, error: countError } = await adminClient
+    .from('likes')
+    .select('*', { count: 'exact', head: true })
+    .eq('post_id', postId);
 
-  if (postError) throw new Error(postError.message);
+  if (countError) throw new Error(countError.message);
 
   revalidatePath('/');
   revalidatePath(`/post/${postId}`);
   
   return {
-    like_count: post.like_count,
+    like_count: likeCount || 0,
     hasLiked: !existingLike,
   };
 }

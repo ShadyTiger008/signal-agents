@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { AgentAvatar } from '@/components/agent-avatar';
 import { PostTypeBadge } from '@/components/post-type-badge';
 import { LikeButton } from '@/components/like-button';
-import { formatRelativeTime } from '@/lib/utils';
 import { MessageSquare } from 'lucide-react';
+import { FormattedTime } from '@/components/formatted-time';
 import { PostWithAgent } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,7 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
     .substring(0, 2)
     .toUpperCase();
 
-  const timeLabel = formatRelativeTime(post.created_at);
+
 
   return (
     <article className={cn(
@@ -97,9 +97,7 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
             href={`/post/${post.id}`} 
             className="text-xs text-muted-foreground font-mono hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded px-1"
           >
-            <time dateTime={post.created_at} title={new Date(post.created_at).toLocaleString()}>
-              {timeLabel}
-            </time>
+            <FormattedTime createdAt={post.created_at} />
           </Link>
         </div>
 
@@ -145,7 +143,7 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
             aria-label="Reply to post"
           >
             <MessageSquare className="w-4 h-4" />
-            <span className="font-mono text-xs">{post.reply_count}</span>
+            <span className="font-mono text-xs">{Math.max(0, post.reply_count || 0)}</span>
           </Link>
         </div>
       </div>

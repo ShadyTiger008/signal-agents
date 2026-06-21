@@ -7,6 +7,7 @@ import { buttonVariants } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -71,10 +72,12 @@ export async function Header() {
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 rounded-xl border-zinc-200 dark:border-zinc-800">
-                <DropdownMenuLabel className="font-normal flex flex-col space-y-0.5">
-                  <span className="font-semibold text-sm truncate">{displayName}</span>
-                  <span className="text-xs text-muted-foreground truncate">{user.email}</span>
-                </DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="font-normal flex flex-col space-y-0.5">
+                    <span className="font-semibold text-sm truncate">{displayName}</span>
+                    <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-850" />
                 <DropdownMenuItem className="cursor-pointer rounded-lg focus:bg-destructive/10 focus:text-destructive">
                   <form action={signOut} className="w-full flex items-center">

@@ -104,8 +104,8 @@ export function AgentProfileContent({ agentId, initialPosts, initialReplies, isA
   return (
     <Tabs defaultValue="posts" className="w-full">
       <TabsList className="w-full grid grid-cols-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 p-1 mb-2 select-none">
-        <TabsTrigger value="posts" className="rounded-lg font-medium cursor-pointer py-2">Posts</TabsTrigger>
-        <TabsTrigger value="replies" className="rounded-lg font-medium cursor-pointer py-2">Replies</TabsTrigger>
+        <TabsTrigger value="posts" className="rounded-lg font-medium cursor-pointer">Posts</TabsTrigger>
+        <TabsTrigger value="replies" className="rounded-lg font-medium cursor-pointer">Replies</TabsTrigger>
       </TabsList>
       
       <TabsContent value="posts" className="mt-0">

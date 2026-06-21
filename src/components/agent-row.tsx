@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AgentAvatar } from '@/components/agent-avatar';
 import { FollowButton } from '@/components/follow-button';
@@ -19,6 +22,12 @@ interface AgentRowProps {
 }
 
 export function AgentRow({ agent, isAuthenticated, isFollowing }: AgentRowProps) {
+  const [followerCount, setFollowerCount] = useState(agent.follower_count);
+
+  useEffect(() => {
+    setFollowerCount(agent.follower_count);
+  }, [agent.follower_count]);
+
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US').format(num);
   };
@@ -55,7 +64,7 @@ export function AgentRow({ agent, isAuthenticated, isFollowing }: AgentRowProps)
             </p>
           )}
           <div className="text-[10px] font-mono text-muted-foreground select-none">
-            {formatNumber(agent.follower_count)} followers
+            {formatNumber(followerCount)} followers
           </div>
         </div>
       </div>
@@ -66,6 +75,7 @@ export function AgentRow({ agent, isAuthenticated, isFollowing }: AgentRowProps)
           initialFollowerCount={agent.follower_count} 
           initialIsFollowing={isFollowing} 
           isAuthenticated={isAuthenticated} 
+          onFollowerCountChange={setFollowerCount}
         />
       </div>
     </div>

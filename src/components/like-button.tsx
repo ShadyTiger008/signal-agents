@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useOptimistic, startTransition } from 'react';
+import { useState, useOptimistic, startTransition, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { toggleLike } from '@/server/actions/likes';
 import { cn } from '@/lib/utils';
@@ -16,14 +16,25 @@ interface LikeButtonProps {
 
 export function LikeButton({ postId, initialLikeCount, initialHasLiked, isAuthenticated }: LikeButtonProps) {
   const router = useRouter();
-  const [likeState, setLikeState] = useState({ count: initialLikeCount, hasLiked: initialHasLiked });
+  const [likeState, setLikeState] = useState({ 
+    count: Math.max(0, initialLikeCount), 
+    hasLiked: initialHasLiked 
+  });
   const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    setLikeState({ 
+      count: Math.max(0, initialLikeCount), 
+      hasLiked: initialHasLiked 
+    });
+  }, [initialLikeCount, initialHasLiked]);
+
 
   const [optimisticLike, setOptimisticLike] = useOptimistic(
     likeState,
     (state, newHasLiked: boolean) => ({
       hasLiked: newHasLiked,
-      count: state.count + (newHasLiked ? 1 : -1)
+      count: Math.max(0, state.count + (newHasLiked ? 1 : -1))
     })
   );
 
@@ -54,7 +65,7 @@ export function LikeButton({ postId, initialLikeCount, initialHasLiked, isAuthen
     try {
       const result = await toggleLike(postId);
       setLikeState({
-        count: result.like_count,
+        count: Math.max(0, result.like_count),
         hasLiked: result.hasLiked,
       });
     } catch (err: any) {

@@ -2,14 +2,17 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { AgentAvatar } from "@/components/agent-avatar";
-import { FollowButton } from "@/components/follow-button";
+import { AgentFollowStats } from "@/components/agent-follow-stats";
 import { AgentProfileContent } from "@/components/agent-profile-content";
+import { AgentRow } from "@/components/agent-row";
 import { getAgentPosts } from "@/server/actions/posts";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
   params: Promise<{ handle: string }>;
 }
+
+export const revalidate = 0;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
@@ -52,13 +55,17 @@ export default async function AgentProfilePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   const isAuthenticated = !!user;
 
-  // 3. Fetch count of posts and check if following
-  const [postsCountResult, isFollowingResult] = await Promise.all([
+  // 3. Fetch count of posts, followers, and check if following
+  const [postsCountResult, followersCountResult, isFollowingResult] = await Promise.all([
     supabase
       .from('posts')
       .select('*', { count: 'exact', head: true })
       .eq('agent_id', agent.id)
       .is('parent_post_id', null),
+    supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('agent_id', agent.id),
     user 
       ? supabase
           .from('follows')
@@ -70,9 +77,53 @@ export default async function AgentProfilePage({ params }: Props) {
   ]);
 
   const totalPosts = postsCountResult.count || 0;
+  const followerCount = followersCountResult.count || 0;
   const isFollowing = !!isFollowingResult.data;
 
-  // 4. Fetch initial posts and replies
+  // 4. Fetch Recommended Agents (category logic: agent_type)
+  const { data: recommendedAgentsResult } = await supabase
+    .from('agents')
+    .select('*, follows:follows(count)')
+    .eq('agent_type', agent.agent_type)
+    .neq('id', agent.id)
+    .order('follower_count', { ascending: false })
+    .limit(4);
+
+  let recommendedAgents = (recommendedAgentsResult || []).map((a: any) => ({
+    ...a,
+    follower_count: a.follows?.[0]?.count ?? 0
+  }));
+
+  if (recommendedAgents.length < 4) {
+    const { data: fallbackAgents } = await supabase
+      .from('agents')
+      .select('*, follows:follows(count)')
+      .neq('id', agent.id)
+      .order('follower_count', { ascending: false })
+      .limit(4 - recommendedAgents.length);
+    if (fallbackAgents) {
+      const mappedFallbacks = fallbackAgents.map((a: any) => ({
+        ...a,
+        follower_count: a.follows?.[0]?.count ?? 0
+      }));
+      recommendedAgents = [...recommendedAgents, ...mappedFallbacks];
+    }
+  }
+
+  let recommendedFollowedIds: string[] = [];
+  if (user && recommendedAgents.length > 0) {
+    const recommendedIds = recommendedAgents.map(a => a.id);
+    const { data: followsData } = await supabase
+      .from('follows')
+      .select('agent_id')
+      .eq('follower_profile_id', user.id)
+      .in('agent_id', recommendedIds);
+    if (followsData) {
+      recommendedFollowedIds = followsData.map(f => f.agent_id);
+    }
+  }
+
+  // 5. Fetch initial posts and replies
   const [initialPosts, initialReplies] = await Promise.all([
     getAgentPosts({ agentId: agent.id, tab: 'posts', limit: 20 }),
     getAgentPosts({ agentId: agent.id, tab: 'replies', limit: 20 })
@@ -83,11 +134,6 @@ export default async function AgentProfilePage({ params }: Props) {
     month: 'long',
     year: 'numeric'
   });
-
-  // Format numbers with commas (e.g. 1,204)
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('en-US').format(num);
-  };
 
   return (
     <div className="w-full space-y-6">
@@ -126,39 +172,21 @@ export default async function AgentProfilePage({ params }: Props) {
           </div>
 
           {agent.bio && (
-            <p className="text-sm text-zinc-700 dark:text-zinc-350 max-w-xl leading-relaxed select-text font-sans">
+            <p className="text-sm text-zinc-700 dark:text-zinc-355 max-w-xl leading-relaxed select-text font-sans">
               {agent.bio}
             </p>
           )}
 
-          {/* Counts metrics */}
-          <div className="flex justify-center sm:justify-start items-center space-x-4 text-xs font-mono text-muted-foreground select-none">
-            <div>
-              <span className="font-bold text-zinc-900 dark:text-zinc-100 mr-1">
-                {formatNumber(agent.follower_count)}
-              </span>
-              followers
-            </div>
-            <div className="w-1.5 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-            <div>
-              <span className="font-bold text-zinc-900 dark:text-zinc-100 mr-1">
-                {formatNumber(totalPosts)}
-              </span>
-              posts
-            </div>
-          </div>
-        </div>
-
-        {/* Follow CTA */}
-        <div className="w-full sm:w-auto flex-shrink-0 sm:pt-1">
-          <FollowButton 
-            agentId={agent.id} 
-            initialFollowerCount={agent.follower_count} 
-            initialIsFollowing={isFollowing} 
-            isAuthenticated={isAuthenticated} 
+          <AgentFollowStats 
+            agentId={agent.id}
+            initialFollowerCount={followerCount}
+            initialIsFollowing={isFollowing}
+            isAuthenticated={isAuthenticated}
+            totalPosts={totalPosts}
           />
         </div>
       </div>
+
 
       {/* Tabbed Feeds */}
       <AgentProfileContent 
@@ -167,6 +195,26 @@ export default async function AgentProfilePage({ params }: Props) {
         initialReplies={initialReplies} 
         isAuthenticated={isAuthenticated} 
       />
+
+      {/* Recommended Agents Section */}
+      {recommendedAgents.length > 0 && (
+        <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800 space-y-4 select-none">
+          <h3 className="text-xs font-bold font-mono tracking-wider text-muted-foreground uppercase">
+            Recommended Agents (Category: {agent.agent_type})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {recommendedAgents.map((recAgent) => (
+              <div key={recAgent.id} className="border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 bg-card/45 backdrop-blur-xl">
+                <AgentRow
+                  agent={recAgent}
+                  isAuthenticated={isAuthenticated}
+                  isFollowing={recommendedFollowedIds.includes(recAgent.id)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

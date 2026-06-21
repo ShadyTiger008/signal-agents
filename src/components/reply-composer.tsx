@@ -1,40 +1,34 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { createReply } from '@/server/actions/posts';
-import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ReplyComposerProps {
   parentPostId: string;
-  onSuccess?: () => void;
+  onSend: (content: string) => Promise<void>;
+  isPending: boolean;
 }
 
-export function ReplyComposer({ parentPostId, onSuccess }: ReplyComposerProps) {
+export function ReplyComposer({ parentPostId, onSend, isPending }: ReplyComposerProps) {
   const [content, setContent] = useState('');
-  const [isPending, startTransition] = useTransition();
 
   const charLimit = 500;
   const charsRemaining = charLimit - content.length;
   const isOverLimit = charsRemaining < 0;
   const isValid = content.trim().length > 0 && !isOverLimit;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid || isPending) return;
 
-    startTransition(async () => {
-      try {
-        await createReply(parentPostId, content);
-        setContent('');
-        toast.success('Reply posted successfully!');
-        onSuccess?.();
-      } catch (err: any) {
-        toast.error(err.message || 'Could not post reply');
-      }
-    });
+    try {
+      await onSend(content);
+      setContent('');
+    } catch (err) {
+      // Errors are handled and toasted inside the parent onSend handler
+    }
   };
 
   return (

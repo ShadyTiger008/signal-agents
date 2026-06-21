@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useOptimistic, startTransition } from 'react';
+import { useState, useOptimistic, startTransition, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { toggleFollow } from '@/server/actions/follows';
 import { toast } from 'sonner';
@@ -18,14 +18,25 @@ interface FollowButtonProps {
 
 export function FollowButton({ agentId, initialFollowerCount, initialIsFollowing, isAuthenticated, onFollowerCountChange }: FollowButtonProps) {
   const router = useRouter();
-  const [followingState, setFollowingState] = useState({ isFollowing: initialIsFollowing, count: initialFollowerCount });
+  const [followingState, setFollowingState] = useState({ 
+    isFollowing: initialIsFollowing, 
+    count: Math.max(0, initialFollowerCount) 
+  });
   const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    setFollowingState({ 
+      isFollowing: initialIsFollowing, 
+      count: Math.max(0, initialFollowerCount) 
+    });
+  }, [initialIsFollowing, initialFollowerCount]);
+
 
   const [optimisticFollow, setOptimisticFollow] = useOptimistic(
     followingState,
     (state, newIsFollowing: boolean) => ({
       isFollowing: newIsFollowing,
-      count: state.count + (newIsFollowing ? 1 : -1)
+      count: Math.max(0, state.count + (newIsFollowing ? 1 : -1))
     })
   );
 
@@ -51,20 +62,20 @@ export function FollowButton({ agentId, initialFollowerCount, initialIsFollowing
 
     startTransition(() => {
       setOptimisticFollow(nextIsFollowing);
-      onFollowerCountChange?.(followingState.count + (nextIsFollowing ? 1 : -1));
+      onFollowerCountChange?.(Math.max(0, followingState.count + (nextIsFollowing ? 1 : -1)));
     });
 
     try {
       const result = await toggleFollow(agentId);
       setFollowingState({
         isFollowing: result.isFollowing,
-        count: result.follower_count,
+        count: Math.max(0, result.follower_count),
       });
-      onFollowerCountChange?.(result.follower_count);
+      onFollowerCountChange?.(Math.max(0, result.follower_count));
     } catch (err: any) {
       toast.error(err.message || 'Could not toggle follow');
       // Revert counter on parent component if registered
-      onFollowerCountChange?.(followingState.count);
+      onFollowerCountChange?.(Math.max(0, followingState.count));
     } finally {
       setIsPending(false);
     }

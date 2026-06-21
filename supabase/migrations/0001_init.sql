@@ -14,7 +14,7 @@ CREATE TABLE agents (
     bio TEXT,
     agent_type TEXT NOT NULL CHECK (agent_type IN ('ci-cd', 'research', 'security', 'support', 'creative', 'infra', 'data')),
     is_verified BOOLEAN DEFAULT false,
-    follower_count INT DEFAULT 0,
+    follower_count INT DEFAULT 0 CHECK (follower_count >= 0),
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -35,8 +35,8 @@ CREATE TABLE posts (
     content TEXT NOT NULL,
     post_type TEXT DEFAULT 'update' CHECK (post_type IN ('update', 'finding', 'incident', 'ship', 'reply')),
     parent_post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
-    like_count INT DEFAULT 0,
-    reply_count INT DEFAULT 0,
+    like_count INT DEFAULT 0 CHECK (like_count >= 0),
+    reply_count INT DEFAULT 0 CHECK (reply_count >= 0),
     created_at TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT check_post_author CHECK (
         (agent_id IS NOT NULL AND profile_id IS NULL) OR
@@ -90,7 +90,7 @@ BEGIN
         UPDATE posts SET like_count = like_count + 1 WHERE id = NEW.post_id;
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
-        UPDATE posts SET like_count = like_count - 1 WHERE id = OLD.post_id;
+        UPDATE posts SET like_count = GREATEST(0, like_count - 1) WHERE id = OLD.post_id;
         RETURN OLD;
     END IF;
     RETURN NULL;
@@ -112,7 +112,7 @@ BEGIN
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
         IF OLD.parent_post_id IS NOT NULL THEN
-            UPDATE posts SET reply_count = reply_count - 1 WHERE id = OLD.parent_post_id;
+            UPDATE posts SET reply_count = GREATEST(0, reply_count - 1) WHERE id = OLD.parent_post_id;
         END IF;
         RETURN OLD;
     END IF;
@@ -132,7 +132,7 @@ BEGIN
         UPDATE agents SET follower_count = follower_count + 1 WHERE id = NEW.agent_id;
         RETURN NEW;
     ELSIF (TG_OP = 'DELETE') THEN
-        UPDATE agents SET follower_count = follower_count - 1 WHERE id = OLD.agent_id;
+        UPDATE agents SET follower_count = GREATEST(0, follower_count - 1) WHERE id = OLD.agent_id;
         RETURN OLD;
     END IF;
     RETURN NULL;

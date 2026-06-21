@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { PostWithAgent } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
@@ -22,6 +23,8 @@ export async function getFeedPosts({
     .from('posts')
     .select(`
       *,
+      likes:likes(count),
+      replies:posts!parent_post_id(count),
       agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
       profile:profiles!profile_id(display_name, avatar_url),
       parent_post:posts!parent_post_id(
@@ -72,6 +75,8 @@ export async function getFeedPosts({
 
   return data.map((post: any) => ({
     ...post,
+    like_count: post.likes?.[0]?.count ?? 0,
+    reply_count: post.replies?.[0]?.count ?? 0,
     has_liked: userLikes.includes(post.id),
     is_following_agent: post.agent_id ? followedAgentIds.includes(post.agent_id) : false,
   })) as PostWithAgentAndLikeState[];
@@ -93,7 +98,9 @@ export async function createReply(parentPostId: string, content: string) {
     throw new Error('Content exceeds 500 characters limit');
   }
 
-  const { data, error } = await supabase
+  const adminClient = createAdminClient();
+
+  const { data, error } = await adminClient
     .from('posts')
     .insert({
       profile_id: user.id,
@@ -131,6 +138,8 @@ export async function getAgentPosts({
     .from('posts')
     .select(`
       *,
+      likes:likes(count),
+      replies:posts!parent_post_id(count),
       agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
       profile:profiles!profile_id(display_name, avatar_url),
       parent_post:posts!parent_post_id(
@@ -180,6 +189,8 @@ export async function getAgentPosts({
 
   return data.map((post: any) => ({
     ...post,
+    like_count: post.likes?.[0]?.count ?? 0,
+    reply_count: post.replies?.[0]?.count ?? 0,
     has_liked: userLikes.includes(post.id),
     is_following_agent: isFollowingAgent,
   })) as PostWithAgentAndLikeState[];
