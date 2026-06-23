@@ -58,7 +58,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background relative overflow-hidden">
+    <div className="min-h-[calc(100vh-11rem)] md:min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 bg-background relative overflow-hidden">
       {/* Decorative Blur Orbs */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl" />

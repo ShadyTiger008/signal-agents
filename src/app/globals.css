@@ -123,9 +123,14 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    text-rendering: optimizeSpeed;
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overflow-x: hidden;
   }
 }
 
@@ -142,4 +147,96 @@ article[data-post-card="true"][data-post-active="true"], div[data-post-card="tru
 .dark article[data-post-card="true"][data-post-active="true"], .dark div[data-post-card="true"][data-post-active="true"] {
   background-color: oklch(0.205 0 0 / 30%);
   box-shadow: inset 4px 0 0 0 oklch(0.676 0.165 233.473);
+}
+
+/* Premium Reaction Picker Animations & Bridges */
+@keyframes reaction-pop {
+  0% {
+    transform: scale(0) translateY(12px);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15) translateY(-2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.reaction-emoji-btn {
+  animation: reaction-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.reaction-menu-bridge::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 16px; /* Spans the gap to prevent cursor loss */
+  background: transparent;
+}
+
+/* GPU acceleration for fixed/sticky components containing heavy backdrop-blur filters */
+header.sticky, 
+aside.fixed, 
+nav.fixed {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* Rendering performance & scrolling optimizations for content feeds */
+article[data-post-card="true"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
+}
+
+/* Smooth active element scroll settings */
+:focus-visible {
+  scroll-margin-top: 5rem;
+}
+
+/* ── Repost button animation ──────────────────────────── */
+@keyframes repost-bounce {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(-12deg) scale(1.2);
+  }
+  60% {
+    transform: rotate(8deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.repost-active {
+  animation: repost-bounce 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* ── Share sheet & Quote modal animations ────────────── */
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes quote-modal-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
 }

@@ -3,12 +3,13 @@
 import { useState, useOptimistic, useTransition, useEffect } from 'react';
 import { ReplyComposer } from '@/components/reply-composer';
 import { LikeButton } from '@/components/like-button';
+import { RepostButton } from '@/components/repost-button';
+import { ShareButton } from '@/components/share-button';
 import { PostCard } from '@/components/post-card';
 import { MessageSquare } from 'lucide-react';
 import { createReply } from '@/server/actions/posts';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { CopyLinkButton } from '@/components/copy-link-button';
 
 interface ThreadRepliesSectionProps {
   postId: string;
@@ -18,6 +19,16 @@ interface ThreadRepliesSectionProps {
   currentUserProfile: any;
   mainPostHasLiked: boolean;
   mainPostLikeCount: number;
+  mainPostUserReaction?: string | null;
+  mainPostLikes?: any[];
+  mainPostHasReposted?: boolean;
+  mainPostRepostCount?: number;
+  mainPostContent?: string;
+  mainPostAuthor?: string;
+  mainPostAuthorHandle?: string;
+  mainPostAuthorAvatar?: string | null;
+  mainPostIsAgent?: boolean;
+  mainPostAgentId?: string | null;
 }
 
 export function ThreadRepliesSection({
@@ -28,6 +39,16 @@ export function ThreadRepliesSection({
   currentUserProfile,
   mainPostHasLiked,
   mainPostLikeCount,
+  mainPostUserReaction,
+  mainPostLikes,
+  mainPostHasReposted = false,
+  mainPostRepostCount = 0,
+  mainPostContent = '',
+  mainPostAuthor = '',
+  mainPostAuthorHandle,
+  mainPostAuthorAvatar,
+  mainPostIsAgent = false,
+  mainPostAgentId,
 }: ThreadRepliesSectionProps) {
   const [replies, setReplies] = useState(initialReplies);
   const [replyCount, setReplyCount] = useState(Math.max(0, initialReplyCount));
@@ -110,18 +131,37 @@ export function ThreadRepliesSection({
   return (
     <div className="space-y-4">
       {/* Actions row */}
-      <div className="flex items-center space-x-4 border-t border-b border-zinc-100 dark:border-zinc-900 py-2.5 select-none">
+      <div className="flex items-center space-x-2.5 border-t border-b border-zinc-100 dark:border-zinc-900 py-2.5 select-none">
         <LikeButton 
+          key={`like-${postId}-${mainPostLikeCount}-${mainPostHasLiked}-${mainPostUserReaction ?? ''}-${mainPostLikes ? mainPostLikes.map((l: any) => l.reaction_type || '').sort().join(',') : ''}`}
           postId={postId} 
           initialLikeCount={mainPostLikeCount} 
           initialHasLiked={mainPostHasLiked} 
           isAuthenticated={isAuthenticated}
+          userReaction={mainPostUserReaction}
+          likes={mainPostLikes}
         />
         <div className="flex items-center space-x-1 py-1.5 px-2 text-zinc-500 dark:text-zinc-400">
           <MessageSquare className="w-4 h-4" />
           <span className="font-mono text-xs">{optimisticState.count}</span>
         </div>
-        <CopyLinkButton postId={postId} />
+        <RepostButton
+          key={`repost-${postId}-${mainPostHasReposted}`}
+          postId={postId}
+          initialRepostCount={mainPostRepostCount}
+          initialHasReposted={mainPostHasReposted}
+          isAuthenticated={isAuthenticated}
+        />
+        <ShareButton
+          postId={postId}
+          postContent={mainPostContent}
+          postAuthor={mainPostAuthor}
+          postAuthorHandle={mainPostAuthorHandle}
+          postAuthorAvatar={mainPostAuthorAvatar}
+          postAuthorIsAgent={mainPostIsAgent}
+          postAgentId={mainPostAgentId}
+          isAuthenticated={isAuthenticated}
+        />
       </div>
 
       {/* Reply Composer (Authenticated users only) */}

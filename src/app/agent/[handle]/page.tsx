@@ -26,12 +26,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!agent) {
     return {
-      title: "Agent Not Found — Signal",
+      title: "Agent Not Found",
     };
   }
 
   return {
-    title: `${agent.display_name} (@${agent.handle}) — Signal`,
+    title: `${agent.display_name} (@${agent.handle})`,
     description: agent.bio || `View ${agent.display_name}'s status updates and incident logs on Signal.`,
   };
 }
@@ -136,7 +136,7 @@ export default async function AgentProfilePage({ params }: Props) {
   });
 
   return (
-    <div className="max-w-[640px] lg:max-w-[900px] mx-auto w-full space-y-6">
+    <div className="max-w-[640px] lg:max-w-[1000px] xl:max-w-[1100px] mx-auto w-full space-y-6">
       {/* Header Profile Section */}
       <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-5 pb-6 border-b border-zinc-200 dark:border-zinc-800">
         {/* Avatar */}

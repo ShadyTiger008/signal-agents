@@ -41,11 +41,14 @@ function AgentPostList({ agentId, tab, initialPosts, isAuthenticated }: AgentPos
     });
   };
 
+  const loadMoreRef = useRef(loadMore);
+  loadMoreRef.current = loadMore;
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          loadMore();
+          loadMoreRef.current();
         }
       },
       { rootMargin: '150px' }
@@ -58,7 +61,7 @@ function AgentPostList({ agentId, tab, initialPosts, isAuthenticated }: AgentPos
     return () => {
       observer.disconnect();
     };
-  }, [posts, hasMore, isPending]);
+  }, []);
 
   return (
     <div className="flex flex-col w-full">

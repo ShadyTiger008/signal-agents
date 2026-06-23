@@ -2,15 +2,23 @@ import Link from 'next/link';
 import { AgentAvatar } from '@/components/agent-avatar';
 import { PostTypeBadge } from '@/components/post-type-badge';
 import { LikeButton } from '@/components/like-button';
+import { RepostButton } from '@/components/repost-button';
+import { ShareButton } from '@/components/share-button';
 import { MessageSquare } from 'lucide-react';
 import { FormattedTime } from '@/components/formatted-time';
-import { CopyLinkButton } from '@/components/copy-link-button';
 import { PostWithAgent } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 interface PostCardProps {
-  post: PostWithAgent & { has_liked?: boolean; is_following_agent?: boolean };
+  post: PostWithAgent & { 
+    has_liked?: boolean;
+    has_reposted?: boolean;
+    is_following_agent?: boolean;
+    user_reaction?: string | null;
+    likes?: any[];
+    repost_count?: number;
+  };
   isAuthenticated: boolean;
   compact?: boolean;
 }
@@ -28,8 +36,15 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
     .join('')
     .substring(0, 2)
     .toUpperCase();
-
-
+  const wordCount = post.content ? post.content.trim().split(/\s+/).filter(Boolean).length : 0;
+  const isLongFormAgent = isAgent && (
+    agent?.agent_type === 'research' || 
+    agent?.handle?.toLowerCase().includes('research') || 
+    agent?.handle?.toLowerCase().includes('generator') ||
+    agent?.handle?.toLowerCase().includes('doc')
+  );
+  const showReadTime = isLongFormAgent && wordCount >= 60;
+  const readTime = Math.max(1, Math.ceil(wordCount / 200));
 
   return (
     <article 
@@ -99,12 +114,22 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
             )}
           </div>
           
-          <Link 
-            href={`/post/${post.id}`} 
-            className="text-xs text-muted-foreground font-mono hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded px-1"
-          >
-            <FormattedTime createdAt={post.created_at} />
-          </Link>
+          <div className="flex items-center space-x-2 text-xs text-muted-foreground font-mono select-none">
+            {showReadTime && (
+              <>
+                <span className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] px-1.5 py-0.5 rounded-md font-semibold tracking-tight text-zinc-500 dark:text-zinc-400">
+                  {readTime} min read
+                </span>
+                <span>•</span>
+              </>
+            )}
+            <Link 
+              href={`/post/${post.id}`} 
+              className="hover:underline focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded px-1"
+            >
+              <FormattedTime createdAt={post.created_at} />
+            </Link>
+          </div>
         </div>
 
         {/* Replying to Context */}
@@ -135,12 +160,15 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
         </p>
 
         {/* Footer Actions */}
-        <div className="flex items-center space-x-4 pt-1.5 select-none">
+        <div className="flex items-center space-x-2.5 pt-1.5 select-none">
           <LikeButton 
+            key={`like-${post.id}-${post.like_count}-${post.has_liked ?? false}-${post.user_reaction ?? ''}-${post.likes ? post.likes.map((l: any) => l.reaction_type || '').sort().join(',') : ''}`}
             postId={post.id} 
             initialLikeCount={post.like_count} 
             initialHasLiked={post.has_liked ?? false} 
             isAuthenticated={isAuthenticated}
+            userReaction={post.user_reaction}
+            likes={post.likes}
           />
           
           <Link 
@@ -148,13 +176,60 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
             className="flex items-center space-x-1 py-1.5 px-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500 dark:text-zinc-400 hover:text-cyan-500 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500"
             aria-label="Reply to post"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-3.5 h-3.5" />
             <span className="font-mono text-xs">{Math.max(0, post.reply_count || 0)}</span>
           </Link>
 
-          <CopyLinkButton postId={post.id} />
+          <RepostButton
+            key={`repost-${post.id}-${post.has_reposted ?? false}`}
+            postId={post.id}
+            initialRepostCount={post.repost_count ?? 0}
+            initialHasReposted={post.has_reposted ?? false}
+            isAuthenticated={isAuthenticated}
+          />
+
+          <ShareButton
+            postId={post.id}
+            postContent={post.content}
+            postAuthor={displayName}
+            postAuthorHandle={isAgent ? agent?.handle : undefined}
+            postAuthorAvatar={avatarUrl ?? null}
+            postAuthorIsAgent={isAgent}
+            postAgentId={post.agent_id}
+            isAuthenticated={isAuthenticated}
+          />
         </div>
       </div>
     </article>
+  );
+}
+
+// ── AgentPostList ────────────────────────────────────────────
+// Thin wrapper for agent profile tabs
+interface AgentPostListProps {
+  posts: any[];
+  isAuthenticated: boolean;
+  compact?: boolean;
+}
+
+export function AgentPostList({ posts, isAuthenticated, compact }: AgentPostListProps) {
+  if (!posts || posts.length === 0) {
+    return (
+      <div className="py-20 text-center text-sm font-mono text-muted-foreground border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/30 dark:bg-zinc-900/10">
+        No posts yet.
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col">
+      {posts.map((post) => (
+        <PostCard
+          key={post.id}
+          post={post}
+          isAuthenticated={isAuthenticated}
+          compact={compact}
+        />
+      ))}
+    </div>
   );
 }

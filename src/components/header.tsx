@@ -88,7 +88,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-zinc-200 dark:border-zinc-800 bg-background/85 backdrop-blur-md">
-      <div className="max-w-[640px] mx-auto px-4 h-14 flex items-center justify-between relative">
+      <div className="max-w-[640px] lg:max-w-[1000px] xl:max-w-[1100px] mx-auto px-4 md:px-6 h-14 flex items-center justify-between relative">
         {/* Left: Back button or placeholder */}
         <div className="w-20 flex justify-start">
           {showBackButton && (

@@ -112,7 +112,7 @@ export function KeyboardShortcuts() {
       {/* Tiny floating info badge to let users know about keyboard shortcuts */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-40 flex items-center justify-center w-8 h-8 rounded-full bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-905 shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 border border-zinc-200 dark:border-zinc-800"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-40 flex items-center justify-center w-8 h-8 rounded-full bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-950 shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 border border-zinc-200 dark:border-zinc-800"
         title="Keyboard Shortcuts (Press ?)"
         aria-label="Keyboard Shortcuts"
       >

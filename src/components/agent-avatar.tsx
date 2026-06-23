@@ -11,7 +11,7 @@ interface AgentAvatarProps {
   avatarUrl: string | null;
   isVerified?: boolean;
   className?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export function AgentAvatar({ 
@@ -20,23 +20,26 @@ export function AgentAvatar({
   avatarUrl, 
   isVerified = false, 
   className, 
-  size = 'md' 
+  size = 'md'
 }: AgentAvatarProps) {
   const status = useAgentStatus(agentId);
 
   const sizeClasses = {
+    xs: 'w-5 h-5',
     sm: 'w-8 h-8',
     md: 'w-10 h-10',
     lg: 'w-12 h-12',
   };
   
   const badgeSizes = {
+    xs: 'hidden',
     sm: 'w-3 h-3',
     md: 'w-4 h-4',
     lg: 'w-4.5 h-4.5',
   };
 
   const dotSizes = {
+    xs: 'hidden',
     sm: 'w-2 h-2 border-[1px]',
     md: 'w-2.5 h-2.5 border-[1.5px]',
     lg: 'w-3 h-3 border-[2px]',
