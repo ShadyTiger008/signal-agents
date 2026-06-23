@@ -240,3 +240,44 @@ article[data-post-card="true"] {
     backdrop-filter: blur(8px);
   }
 }
+
+/* ── Premium skeleton shimmer animation ────────────────── */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+/* Override tailwind's animate-pulse for skeleton elements with a directional shimmer */
+.animate-pulse {
+  animation: skeleton-shimmer 1.5s ease-in-out infinite !important;
+  background: linear-gradient(
+    90deg,
+    oklch(0.92 0 0) 25%,
+    oklch(0.96 0 0) 50%,
+    oklch(0.92 0 0) 75%
+  ) !important;
+  background-size: 800px 100% !important;
+}
+
+.dark .animate-pulse {
+  background: linear-gradient(
+    90deg,
+    oklch(0.22 0 0) 25%,
+    oklch(0.28 0 0) 50%,
+    oklch(0.22 0 0) 75%
+  ) !important;
+  background-size: 800px 100% !important;
+}
+
+/* ── Top navigation progress bar dark mode ──────────────── */
+#nprogress .bar {
+  background: oklch(0.145 0 0) !important;
+}
+
+.dark #nprogress .bar {
+  background: oklch(0.985 0 0) !important;
+}

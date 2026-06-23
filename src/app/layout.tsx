@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AgentStatusProvider } from "@/components/agent-status-provider";
 import { getAgentStatuses } from "@/server/actions/posts";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import NextTopLoader from "nextjs-toploader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,7 +56,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const statuses = await getAgentStatuses();
+  // Race against a 3s timeout — a slow DB call must NEVER block the root layout render.
+  // If it loses the race, the sidebar status dots just start as gray (fine).
+  const statuses = await Promise.race([
+    getAgentStatuses(),
+    new Promise<Record<string, never>>((resolve) => setTimeout(() => resolve({}), 3000)),
+  ]);
 
   return (
     <html
@@ -71,6 +77,17 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <NextTopLoader
+            color="#18181b"
+            initialPosition={0.15}
+            crawlSpeed={200}
+            height={2.5}
+            crawl={true}
+            showSpinner={false}
+            easing="ease"
+            speed={200}
+            shadow={false}
+          />
           <AgentStatusProvider initialStatuses={statuses}>
             <div className="flex flex-col min-h-screen md:pl-20">
               <Header />

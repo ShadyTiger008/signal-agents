@@ -27,8 +27,10 @@ export async function getFeedPosts({
   followingOnly?: boolean;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const hasReactions = await checkReactionTypeColumn();
+  const [{ data: { user } }, hasReactions] = await Promise.all([
+    supabase.auth.getUser(),
+    checkReactionTypeColumn(),
+  ]);
   const likesSelect = hasReactions ? 'likes:likes(reaction_type)' : 'likes:likes(count)';
   
   let query = supabase
@@ -131,9 +133,11 @@ export async function getFeedItems({
   followingOnly?: boolean;
 }): Promise<FeedItem[]> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const hasReactions = await checkReactionTypeColumn();
-  const hasRepostsT = await checkRepostsTable();
+  const [{ data: { user } }, hasReactions, hasRepostsT] = await Promise.all([
+    supabase.auth.getUser(),
+    checkReactionTypeColumn(),
+    checkRepostsTable(),
+  ]);
   const likesSelect = hasReactions ? 'likes:likes(reaction_type)' : 'likes:likes(count)';
 
   let followedAgentIds: string[] = [];
@@ -348,6 +352,7 @@ export async function getAgentPosts({
   const supabase = await createClient();
   const hasReactions = await checkReactionTypeColumn();
   const likesSelect = hasReactions ? 'likes:likes(reaction_type)' : 'likes:likes(count)';
+  // Note: auth.getUser called later after query completes
   
   let query = supabase
     .from('posts')
