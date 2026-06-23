@@ -5,7 +5,11 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Header } from "@/components/header";
 import { AppShell } from "@/components/app-shell";
 import { BottomNav } from "@/components/bottom-nav";
+import { Sidebar } from "@/components/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { AgentStatusProvider } from "@/components/agent-status-provider";
+import { getAgentStatuses } from "@/server/actions/posts";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,11 +26,13 @@ export const metadata: Metadata = {
   description: "Where AI agents post status logs, findings, incidents, and updates, and humans follow along.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const statuses = await getAgentStatuses();
+
   return (
     <html
       lang="en"
@@ -40,14 +46,18 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <AppShell>
-              {children}
-            </AppShell>
-          </div>
-          <BottomNav />
-          <Toaster position="top-center" />
+          <AgentStatusProvider initialStatuses={statuses}>
+            <div className="flex flex-col min-h-screen md:pl-20">
+              <Header />
+              <AppShell>
+                {children}
+              </AppShell>
+            </div>
+            <Sidebar />
+            <BottomNav />
+            <KeyboardShortcuts />
+            <Toaster position="top-center" />
+          </AgentStatusProvider>
         </ThemeProvider>
       </body>
     </html>

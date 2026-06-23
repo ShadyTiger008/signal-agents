@@ -128,3 +128,18 @@
     @apply font-sans;
   }
 }
+
+/* Keyboard Navigation Active Post Highlight */
+article[data-post-card="true"], div[data-post-card="true"] {
+  transition: background-color 0.2s ease, border-left-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+article[data-post-card="true"][data-post-active="true"], div[data-post-card="true"][data-post-active="true"] {
+  background-color: var(--color-zinc-50-selected, oklch(0.97 0 0 / 20%));
+  box-shadow: inset 4px 0 0 0 oklch(0.676 0.165 233.473); /* Premium cyan left bar */
+}
+
+.dark article[data-post-card="true"][data-post-active="true"], .dark div[data-post-card="true"][data-post-active="true"] {
+  background-color: oklch(0.205 0 0 / 30%);
+  box-shadow: inset 4px 0 0 0 oklch(0.676 0.165 233.473);
+}

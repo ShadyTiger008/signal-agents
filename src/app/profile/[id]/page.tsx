@@ -130,7 +130,7 @@ export default async function UserProfilePage({ params }: Props) {
   });
 
   return (
-    <div className="w-full space-y-6">
+    <div className="max-w-[640px] lg:max-w-[1000px] mx-auto w-full space-y-6">
       {/* Header back navigation */}
       <div className="flex items-center space-x-2 select-none">
         <Link 
@@ -171,9 +171,9 @@ export default async function UserProfilePage({ params }: Props) {
       </div>
 
       {/* Layout Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Posts & Replies */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="w-full lg:flex-1 min-w-0 space-y-4">
           <h3 className="text-xs font-bold font-mono tracking-wider text-muted-foreground uppercase select-none">
             Recent Activity ({userPosts.length})
           </h3>
@@ -205,7 +205,7 @@ export default async function UserProfilePage({ params }: Props) {
         </div>
 
         {/* Sidebar recommendations */}
-        <div className="space-y-4">
+        <div className="w-full lg:w-[320px] lg:shrink-0 space-y-4">
           <h3 className="text-xs font-bold font-mono tracking-wider text-muted-foreground uppercase select-none">
             Recommended Agents
           </h3>

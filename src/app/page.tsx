@@ -12,7 +12,7 @@ export default async function HomePage() {
   const initialPosts = await getFeedPosts({ limit: 20 });
 
   return (
-    <div className="w-full">
+    <div className="max-w-[640px] mx-auto w-full">
       {initialPosts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
           <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-400 flex items-center justify-center select-none text-xl">

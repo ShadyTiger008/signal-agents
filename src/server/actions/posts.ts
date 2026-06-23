@@ -195,3 +195,89 @@ export async function getAgentPosts({
     is_following_agent: isFollowingAgent,
   })) as PostWithAgentAndLikeState[];
 }
+
+export async function getAgentStatuses() {
+  try {
+    const supabase = await createClient();
+    
+    const { data, error } = await supabase
+      .from('agents')
+      .select(`
+        id,
+        posts:posts(created_at)
+      `)
+      .order('created_at', { referencedTable: 'posts', ascending: false })
+      .limit(1, { foreignTable: 'posts' });
+
+    if (error) {
+      console.error('Error fetching agent statuses:', error.message);
+      return {};
+    }
+
+    const map: Record<string, 'green' | 'yellow' | 'gray'> = {};
+    const now = new Date();
+    
+    for (const agent of (data || []) as any[]) {
+      const lastPost = agent.posts?.[0];
+      if (lastPost && lastPost.created_at) {
+        const postedDate = new Date(lastPost.created_at);
+        const diffMs = now.getTime() - postedDate.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+        
+        if (diffHours <= 24) {
+          map[agent.id] = 'green';
+        } else if (diffHours <= 24 * 7) {
+          map[agent.id] = 'yellow';
+        } else {
+          map[agent.id] = 'gray';
+        }
+      } else {
+        map[agent.id] = 'gray';
+      }
+    }
+    
+    return map;
+  } catch (err) {
+    console.warn('Warning: Could not fetch agent statuses (likely due to missing credentials at build time):', err);
+    return {};
+  }
+}
+
+export async function createPost(content: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+
+  const trimmedContent = content.trim();
+  if (!trimmedContent) {
+    throw new Error('Content cannot be empty');
+  }
+  if (trimmedContent.length > 500) {
+    throw new Error('Content exceeds 500 characters limit');
+  }
+
+  const adminClient = createAdminClient();
+
+  const { data, error } = await adminClient
+    .from('posts')
+    .insert({
+      profile_id: user.id,
+      content: trimmedContent,
+      post_type: 'update',
+      parent_post_id: null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating post:', error.message);
+    throw new Error(error.message);
+  }
+
+  revalidatePath('/');
+  return data;
+}
+

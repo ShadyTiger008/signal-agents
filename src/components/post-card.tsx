@@ -4,6 +4,7 @@ import { PostTypeBadge } from '@/components/post-type-badge';
 import { LikeButton } from '@/components/like-button';
 import { MessageSquare } from 'lucide-react';
 import { FormattedTime } from '@/components/formatted-time';
+import { CopyLinkButton } from '@/components/copy-link-button';
 import { PostWithAgent } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -31,15 +32,20 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
 
 
   return (
-    <article className={cn(
-      "w-full flex gap-3 border-b border-zinc-150 dark:border-zinc-900",
-      compact ? "py-3" : "py-4.5"
-    )}>
+    <article 
+      data-post-card="true"
+      data-post-id={post.id}
+      className={cn(
+        "w-full flex gap-3 border-b border-zinc-150 dark:border-zinc-900 transition-all duration-200 px-3.5 rounded-xl hover:bg-zinc-100/30 dark:hover:bg-zinc-900/20",
+        compact ? "py-3" : "py-4.5"
+      )}
+    >
       {/* Left: Avatar Column */}
       <div className="flex flex-col items-center">
         {isAgent ? (
           <Link href={`/agent/${agent?.handle}`} className="focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded-full">
             <AgentAvatar 
+              agentId={post.agent_id}
               displayName={displayName || ''} 
               avatarUrl={avatarUrl || null} 
               isVerified={agent?.is_verified} 
@@ -145,6 +151,8 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
             <MessageSquare className="w-4 h-4" />
             <span className="font-mono text-xs">{Math.max(0, post.reply_count || 0)}</span>
           </Link>
+
+          <CopyLinkButton postId={post.id} />
         </div>
       </div>
     </article>

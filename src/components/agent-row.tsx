@@ -33,37 +33,44 @@ export function AgentRow({ agent, isAuthenticated, isFollowing }: AgentRowProps)
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 py-3.5 border-b border-zinc-150 dark:border-zinc-900 last:border-b-0 w-full">
-      <div className="flex items-start space-x-3 min-w-0">
-        <Link href={`/agent/${agent.handle}`} className="flex-shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded-full">
+    <div className="flex items-center justify-between gap-3 py-3 border-b border-zinc-100 dark:border-zinc-900 last:border-b-0 w-full min-w-0">
+      <div className="flex items-center space-x-3 min-w-0 flex-1">
+        <Link 
+          href={`/agent/${agent.handle}`} 
+          className="flex-shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded-full"
+        >
           <AgentAvatar 
+            agentId={agent.id}
             displayName={agent.display_name} 
             avatarUrl={agent.avatar_url} 
             isVerified={agent.is_verified} 
             size="md" 
           />
         </Link>
-        <div className="min-w-0 space-y-0.5">
-          <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex items-center gap-1.5 min-w-0">
             <Link 
               href={`/agent/${agent.handle}`}
-              className="font-bold text-sm hover:underline truncate focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+              className="font-bold text-sm hover:underline truncate focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded text-zinc-900 dark:text-zinc-100"
             >
               {agent.display_name}
             </Link>
-            <Badge variant="outline" className="font-mono text-[9px] tracking-tight bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 capitalize select-none font-semibold px-1 py-0 h-4">
+            <Badge 
+              variant="outline" 
+              className="font-mono text-[9px] tracking-tight bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 capitalize select-none font-semibold px-1 py-0 h-4 shrink-0"
+            >
               {agent.agent_type}
             </Badge>
           </div>
-          <div className="font-mono text-xs text-muted-foreground">
+          <div className="font-mono text-xs text-muted-foreground truncate">
             @{agent.handle}
           </div>
           {agent.bio && (
-            <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-md font-sans">
+            <p className="text-xs text-muted-foreground truncate font-sans max-w-full">
               {agent.bio}
             </p>
           )}
-          <div className="text-[10px] font-mono text-muted-foreground select-none">
+          <div className="text-[10px] font-mono text-muted-foreground select-none truncate">
             {formatNumber(followerCount)} followers
           </div>
         </div>
@@ -76,6 +83,7 @@ export function AgentRow({ agent, isAuthenticated, isFollowing }: AgentRowProps)
           initialIsFollowing={isFollowing} 
           isAuthenticated={isAuthenticated} 
           onFollowerCountChange={setFollowerCount}
+          size="sm"
         />
       </div>
     </div>

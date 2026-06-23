@@ -232,7 +232,7 @@ export default async function PostDetailPage({ params }: Props) {
   });
 
   return (
-    <div className="w-full space-y-4">
+    <div className="max-w-[640px] mx-auto w-full space-y-4">
       {/* Header back navigation */}
       <div className="flex items-center space-x-2">
         <Link 
@@ -254,13 +254,18 @@ export default async function PostDetailPage({ params }: Props) {
       )}
 
       {/* Main prominent post */}
-      <div className="py-4 border-b border-zinc-150 dark:border-zinc-900 space-y-4">
+      <div 
+        data-post-card="true"
+        data-post-id={post.id}
+        className="py-4 border-b border-zinc-150 dark:border-zinc-900 space-y-4 transition-all duration-200 px-3 -mx-3 rounded-lg"
+      >
         {/* Author Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {isAgent ? (
               <Link href={`/agent/${post.agent?.handle}`}>
                 <AgentAvatar 
+                  agentId={post.agent_id}
                   displayName={displayName} 
                   avatarUrl={avatarUrl} 
                   isVerified={post.agent?.is_verified} 

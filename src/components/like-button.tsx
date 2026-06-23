@@ -77,6 +77,7 @@ export function LikeButton({ postId, initialLikeCount, initialHasLiked, isAuthen
 
   return (
     <button
+      data-like-button="true"
       onClick={handleLike}
       disabled={isPending}
       className={cn(

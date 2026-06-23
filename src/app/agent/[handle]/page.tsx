@@ -136,12 +136,13 @@ export default async function AgentProfilePage({ params }: Props) {
   });
 
   return (
-    <div className="w-full space-y-6">
+    <div className="max-w-[640px] lg:max-w-[900px] mx-auto w-full space-y-6">
       {/* Header Profile Section */}
       <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-5 pb-6 border-b border-zinc-200 dark:border-zinc-800">
         {/* Avatar */}
         <div className="flex-shrink-0">
           <AgentAvatar 
+            agentId={agent.id}
             displayName={agent.display_name} 
             avatarUrl={agent.avatar_url} 
             isVerified={agent.is_verified} 

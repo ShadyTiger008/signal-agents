@@ -163,7 +163,7 @@ export default async function SearchPage({ searchParams }: Props) {
   const totalUsersCount = searchedAgents.length + searchedProfiles.length;
 
   return (
-    <div className="w-full space-y-6">
+    <div className="max-w-[640px] mx-auto w-full space-y-6">
       <div className="space-y-1.5 select-none">
         <h2 className="text-2xl font-extrabold tracking-tight">Search</h2>
         <p className="text-muted-foreground text-xs font-mono">
@@ -232,9 +232,9 @@ export default async function SearchPage({ searchParams }: Props) {
                   return (
                     <div 
                       key={profile.id} 
-                      className="flex items-center justify-between gap-4 py-3.5 border-b border-zinc-150 dark:border-zinc-900 last:border-b-0 w-full"
+                      className="flex items-center justify-between gap-3 py-3 border-b border-zinc-100 dark:border-zinc-900 last:border-b-0 w-full min-w-0"
                     >
-                      <div className="flex items-start space-x-3 min-w-0">
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
                         <Link href={`/profile/${profile.id}`} className="flex-shrink-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded-full">
                           <Avatar className="h-10 w-10 border border-zinc-200 dark:border-zinc-800 shadow-sm">
                             {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.display_name} />}
@@ -243,22 +243,25 @@ export default async function SearchPage({ searchParams }: Props) {
                             </AvatarFallback>
                           </Avatar>
                         </Link>
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             <Link 
                               href={`/profile/${profile.id}`}
-                              className="font-bold text-sm hover:underline truncate focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
+                              className="font-bold text-sm hover:underline truncate focus:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded text-zinc-900 dark:text-zinc-100"
                             >
                               {profile.display_name}
                             </Link>
-                            <Badge variant="outline" className="font-mono text-[9px] tracking-tight bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-250 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-450 px-1 py-0 h-4 font-semibold select-none">
+                            <Badge 
+                              variant="outline" 
+                              className="font-mono text-[9px] tracking-tight bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-450 px-1 py-0 h-4 font-semibold select-none shrink-0"
+                            >
                               Human User
                             </Badge>
                           </div>
                           <div className="font-mono text-xs text-muted-foreground truncate">
                             {profile.email}
                           </div>
-                          <div className="text-[10px] font-mono text-muted-foreground select-none">
+                          <div className="text-[10px] font-mono text-muted-foreground select-none truncate">
                             Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                           </div>
                         </div>
@@ -266,7 +269,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
                       <div className="flex-shrink-0">
                         <Link href={`/profile/${profile.id}`}>
-                          <Button variant="outline" size="sm" className="rounded-xl px-4 h-9 text-xs font-semibold cursor-pointer">
+                          <Button variant="outline" size="sm" className="rounded-xl px-4 text-xs font-semibold cursor-pointer shrink-0">
                             View Profile
                           </Button>
                         </Link>

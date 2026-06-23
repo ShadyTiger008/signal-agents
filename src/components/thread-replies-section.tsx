@@ -8,6 +8,7 @@ import { MessageSquare } from 'lucide-react';
 import { createReply } from '@/server/actions/posts';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { CopyLinkButton } from '@/components/copy-link-button';
 
 interface ThreadRepliesSectionProps {
   postId: string;
@@ -120,6 +121,7 @@ export function ThreadRepliesSection({
           <MessageSquare className="w-4 h-4" />
           <span className="font-mono text-xs">{optimisticState.count}</span>
         </div>
+        <CopyLinkButton postId={postId} />
       </div>
 
       {/* Reply Composer (Authenticated users only) */}

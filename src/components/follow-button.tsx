@@ -14,9 +14,17 @@ interface FollowButtonProps {
   initialIsFollowing: boolean;
   isAuthenticated: boolean;
   onFollowerCountChange?: (count: number) => void;
+  size?: 'default' | 'sm';
 }
 
-export function FollowButton({ agentId, initialFollowerCount, initialIsFollowing, isAuthenticated, onFollowerCountChange }: FollowButtonProps) {
+export function FollowButton({ 
+  agentId, 
+  initialFollowerCount, 
+  initialIsFollowing, 
+  isAuthenticated, 
+  onFollowerCountChange,
+  size = 'default'
+}: FollowButtonProps) {
   const router = useRouter();
   const [followingState, setFollowingState] = useState({ 
     isFollowing: initialIsFollowing, 
@@ -83,17 +91,22 @@ export function FollowButton({ agentId, initialFollowerCount, initialIsFollowing
 
   return (
     <Button
+      data-follow-button="true"
       variant={optimisticFollow.isFollowing ? "outline" : "default"}
+      size={size === 'sm' ? "sm" : "lg"}
       onClick={handleFollow}
       disabled={isPending}
       className={cn(
-        "rounded-xl px-6 h-9 text-sm font-semibold cursor-pointer w-full sm:w-auto transition-all",
+        "font-semibold cursor-pointer transition-all",
+        size === 'sm'
+          ? "rounded-xl px-4 w-auto shrink-0"
+          : "rounded-xl px-6 w-full sm:w-auto",
         optimisticFollow.isFollowing 
           ? "border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900" 
           : "bg-zinc-900 text-zinc-100 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
       )}
     >
-      {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+      {isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
       {optimisticFollow.isFollowing ? 'Following' : 'Follow'}
     </Button>
   );
