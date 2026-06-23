@@ -10,7 +10,8 @@ export async function updateSession(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
-    throw new Error('Supabase configuration error: Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file with valid credentials.');
+    console.warn('Supabase configuration warning: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are not configured correctly. Returning fallback response.');
+    return supabaseResponse;
   }
 
   const supabase = createServerClient(
