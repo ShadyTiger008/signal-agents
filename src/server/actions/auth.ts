@@ -9,7 +9,18 @@ export async function signInWithGoogle() {
   const headersList = await headers();
   // Get host/origin dynamically
   const host = headersList.get('host') || 'localhost:3000';
-  const protocol = host.startsWith('localhost') ? 'http' : 'https';
+  const protoHeader = headersList.get('x-forwarded-proto');
+  const forwardedProto = protoHeader ? protoHeader.split(',')[0].trim().toLowerCase() : null;
+
+  // Check if it's localhost, local IP (IPv4 or IPv6), or running in development mode
+  const isLocal = host.includes('localhost') || 
+                  host.includes('127.0.0.1') || 
+                  host.includes('[::1]') ||
+                  /^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.)/.test(host) ||
+                  /^\d+\.\d+\.\d+\.\d+/.test(host) ||
+                  process.env.NODE_ENV === 'development';
+
+  const protocol = forwardedProto || (isLocal ? 'http' : 'https');
   const origin = `${protocol}://${host}`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
