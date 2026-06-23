@@ -11,15 +11,23 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 interface Props {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; from?: string; after?: string; before?: string; sort?: string }>;
 }
 
 export const revalidate = 0;
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { q } = await searchParams;
+  const { q, from, after, before, sort } = await searchParams;
+  const filterDesc = [];
+  if (from) filterDesc.push(`from @${from}`);
+  if (after) filterDesc.push(`after ${after}`);
+  if (before) filterDesc.push(`before ${before}`);
+  if (sort) filterDesc.push(`sort ${sort}`);
+  
+  const suffix = filterDesc.length > 0 ? ` (${filterDesc.join(', ')})` : '';
+
   return {
-    title: q ? `Search: "${q}"` : "Search Agents & Posts",
+    title: q ? `Search: "${q}"${suffix}` : `Search Agents & Posts${suffix}`,
     description: q 
       ? `Browse AI status updates and logs matching "${q}" on the Signal platform.`
       : "Search AI agents, human users, bios, profiles, and post history on the Signal platform.",
@@ -27,7 +35,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function SearchPage({ searchParams }: Props) {
-  const { q } = await searchParams;
+  const { q, from, after, before, sort } = await searchParams;
   const rawQuery = q || "";
   const query = rawQuery.replace(/[(),]/g, " ").trim();
 
@@ -43,7 +51,9 @@ export default async function SearchPage({ searchParams }: Props) {
   let searchedProfiles: any[] = [];
   let searchedPosts: any[] = [];
 
-  if (!query) {
+  const hasFilters = !!(query || from || after || before || sort);
+
+  if (!hasFilters) {
     // Fetch default recommendations
     const [agentsResult, postsResult] = await Promise.all([
       supabase
@@ -74,54 +84,108 @@ export default async function SearchPage({ searchParams }: Props) {
     }));
     recommendedPosts = postsResult.data || [];
   } else {
-    // Search agents, profiles, and posts in parallel
+    // Search agents, profiles, and posts in parallel with filters applied
+    
+    // 1. Check if 'from' author matches agents or human profiles
+    let authorFilter: { agentIds: string[], profileIds: string[] } | null = null;
+    if (from) {
+      const [agentsMatch, profilesMatch] = await Promise.all([
+        supabase.from('agents').select('id').ilike('handle', `%${from}%`),
+        supabase.from('profiles').select('id').ilike('display_name', `%${from}%`)
+      ]);
+      const agentIds = (agentsMatch.data || []).map(a => a.id);
+      const profileIds = (profilesMatch.data || []).map(p => p.id);
+      authorFilter = { agentIds, profileIds };
+    }
+
+    // 2. Build Posts query
+    let postsQuery = supabase
+      .from('posts')
+      .select(`
+        *,
+        ${likesSelect},
+        replies:posts!parent_post_id(count),
+        agent:agents(id, handle, display_name, avatar_url, is_verified, agent_type),
+        profile:profiles!profile_id(display_name, avatar_url),
+        parent_post:posts!parent_post_id(
+          agent:agents(handle),
+          profile:profiles!profile_id(display_name)
+        )
+      `);
+
+    // Apply content text search
+    if (query) {
+      postsQuery = postsQuery.or(`content.ilike.%${query}%`);
+    }
+
+    // Apply author filtering
+    if (authorFilter) {
+      const { agentIds, profileIds } = authorFilter;
+      if (agentIds.length > 0 && profileIds.length > 0) {
+        const clauses = [
+          `agent_id.in.(${agentIds.join(',')})`,
+          `profile_id.in.(${profileIds.join(',')})`
+        ];
+        postsQuery = postsQuery.or(clauses.join(','));
+      } else if (agentIds.length > 0) {
+        postsQuery = postsQuery.in('agent_id', agentIds);
+      } else if (profileIds.length > 0) {
+        postsQuery = postsQuery.in('profile_id', profileIds);
+      } else {
+        // No match found for the requested profile name, force empty list by searching non-existent ID
+        postsQuery = postsQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+      }
+    }
+
+    // Apply date range filters
+    if (after) {
+      postsQuery = postsQuery.gte('created_at', new Date(after).toISOString());
+    }
+    if (before) {
+      const endOfDay = new Date(before);
+      endOfDay.setHours(23, 59, 59, 999);
+      postsQuery = postsQuery.lte('created_at', endOfDay.toISOString());
+    }
+
+    // Apply sorting
+    if (sort === 'popular') {
+      postsQuery = postsQuery.order('like_count', { ascending: false });
+    } else {
+      postsQuery = postsQuery.order('created_at', { ascending: false });
+    }
+
+    // Limit output length
+    postsQuery = postsQuery.limit(30);
+
+    // 3. Resolve user search queries
+    let agentsSearchQuery = supabase.from('agents').select('*, follows:follows(count)');
+    let profilesSearchQuery = supabase.from('profiles').select('*');
+
+    if (query) {
+      agentsSearchQuery = agentsSearchQuery.or(`handle.ilike.%${query}%,display_name.ilike.%${query}%,bio.ilike.%${query}%`);
+      profilesSearchQuery = profilesSearchQuery.or(`display_name.ilike.%${query}%,email.ilike.%${query}%`);
+    } else {
+      // Empty query means we are only filtering by date or profile, so load popular agents/profiles instead of empty lists
+      agentsSearchQuery = agentsSearchQuery.order('follower_count', { ascending: false }).limit(5);
+      profilesSearchQuery = profilesSearchQuery.limit(5);
+    }
+
     const [agentsResult, profilesResult, postsResult, recAgentsResult, recPostsResult] = await Promise.all([
-      supabase
-        .from('agents')
-        .select('*, follows:follows(count)')
-        .or(`handle.ilike.%${query}%,display_name.ilike.%${query}%,bio.ilike.%${query}%`)
-        .limit(20),
-      supabase
-        .from('profiles')
-        .select('*')
-        .or(`display_name.ilike.%${query}%,email.ilike.%${query}%`)
-        .limit(20),
-      supabase
-        .from('posts')
-        .select(`
-          *,
-          ${likesSelect},
-          replies:posts!parent_post_id(count),
-          agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
-          profile:profiles!profile_id(display_name, avatar_url),
-          parent_post:posts!parent_post_id(
-            agent:agents(handle),
-            profile:profiles!profile_id(display_name)
-          )
-        `)
-        .or(`content.ilike.%${query}%`)
-        .limit(20),
-      supabase
-        .from('agents')
-        .select('*, follows:follows(count)')
-        .order('follower_count', { ascending: false })
-        .limit(3),
-      supabase
-        .from('posts')
-        .select(`
-          *,
-          ${likesSelect},
-          replies:posts!parent_post_id(count),
-          agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
-          profile:profiles!profile_id(display_name, avatar_url),
-          parent_post:posts!parent_post_id(
-            agent:agents(handle),
-            profile:profiles!profile_id(display_name)
-          )
-        `)
-        .is('parent_post_id', null)
-        .order('like_count', { ascending: false })
-        .limit(3)
+      agentsSearchQuery,
+      profilesSearchQuery,
+      postsQuery,
+      supabase.from('agents').select('*, follows:follows(count)').order('follower_count', { ascending: false }).limit(3),
+      supabase.from('posts').select(`
+        *,
+        ${likesSelect},
+        replies:posts!parent_post_id(count),
+        agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
+        profile:profiles!profile_id(display_name, avatar_url),
+        parent_post:posts!parent_post_id(
+          agent:agents(handle),
+          profile:profiles!profile_id(display_name)
+        )
+      `).is('parent_post_id', null).order('like_count', { ascending: false }).limit(3)
     ]);
 
     searchedAgents = (agentsResult.data || []).map((agent: any) => ({
@@ -136,6 +200,7 @@ export default async function SearchPage({ searchParams }: Props) {
     }));
     recommendedPosts = recPostsResult.data || [];
   }
+
 
   // Batch query follows and likes for auth state mapping to avoid N+1
   let followedAgentIds: string[] = [];
