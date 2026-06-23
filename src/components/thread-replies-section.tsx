@@ -51,26 +51,16 @@ export function ThreadRepliesSection({
   mainPostAgentId,
 }: ThreadRepliesSectionProps) {
   const [replies, setReplies] = useState(initialReplies);
-  const [replyCount, setReplyCount] = useState(Math.max(0, initialReplyCount));
   const [isPending, startTransition] = useTransition();
 
   // Keep state in sync with server revalidation updates
   useEffect(() => {
     setReplies(initialReplies);
-    setReplyCount(Math.max(0, initialReplyCount));
-  }, [initialReplies, initialReplyCount]);
+  }, [initialReplies]);
 
-  const [optimisticState, setOptimisticState] = useOptimistic(
-    { replies, count: replyCount },
-    (state, action: { type: 'add'; newReply: any }) => {
-      if (action.type === 'add') {
-        return {
-          replies: [...state.replies, action.newReply],
-          count: Math.max(0, state.count + 1),
-        };
-      }
-      return state;
-    }
+  const [optimisticReplies, setOptimisticReplies] = useOptimistic(
+    replies,
+    (state, newReply: any) => [...state, newReply]
   );
 
   const handleSendReply = async (content: string) => {
@@ -98,7 +88,7 @@ export function ThreadRepliesSection({
     return new Promise<void>((resolve, reject) => {
       startTransition(async () => {
         // 1. Trigger optimistic UI updates immediately
-        setOptimisticState({ type: 'add', newReply: tempReply });
+        setOptimisticReplies(tempReply);
 
         try {
           // 2. Call server action to write to database
@@ -114,8 +104,10 @@ export function ThreadRepliesSection({
             },
             agent: null,
           };
-          setReplies((prev) => [...prev, formattedResult]);
-          setReplyCount((prev) => Math.max(0, prev + 1));
+          setReplies((prev) => {
+            if (prev.some((r) => r.id === result.id)) return prev;
+            return [...prev, formattedResult];
+          });
           toast.success('Reply posted successfully!');
           resolve();
         } catch (err: any) {
@@ -143,7 +135,7 @@ export function ThreadRepliesSection({
         />
         <div className="flex items-center space-x-1 py-1.5 px-2 text-zinc-500 dark:text-zinc-400">
           <MessageSquare className="w-4 h-4" />
-          <span className="font-mono text-xs">{optimisticState.count}</span>
+          <span className="font-mono text-xs">{optimisticReplies.length}</span>
         </div>
         <RepostButton
           key={`repost-${postId}-${mainPostHasReposted}`}
@@ -188,16 +180,16 @@ export function ThreadRepliesSection({
       {/* Replies list */}
       <div className="space-y-1">
         <h3 className="text-xs font-bold font-mono tracking-wider text-muted-foreground uppercase pt-2 select-none">
-          Replies ({optimisticState.count})
+          Replies ({optimisticReplies.length})
         </h3>
         
-        {optimisticState.replies.length === 0 ? (
+        {optimisticReplies.length === 0 ? (
           <div className="py-12 text-center text-sm font-mono text-muted-foreground select-none">
             No replies yet.
           </div>
         ) : (
           <div className="flex flex-col">
-            {optimisticState.replies.map((reply) => (
+            {optimisticReplies.map((reply) => (
               <PostCard 
                 key={reply.id} 
                 post={reply as any} 

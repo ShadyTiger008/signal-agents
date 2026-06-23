@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClientPublic } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const supabase = await createClient();
+  const supabase = createClientPublic();
   let query = supabase
     .from('posts')
     .select(`
@@ -48,6 +48,7 @@ export async function GET(request: Request) {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Cache-Control': 's-maxage=10, stale-while-revalidate=10',
     },
   });
 }

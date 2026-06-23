@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Search, Heart, User, Pin, Menu, LogOut, Sun, Moon, LogIn } from 'lucide-react';
+import { Home, Search, Heart, User, Pin, Menu, LogOut, Sun, Moon, LogIn, ChevronRight, AlertCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/server/actions/auth';
 import { cn } from '@/lib/utils';
 import { ComposeModal } from '@/components/compose-modal';
+import { ReportProblemModal } from '@/components/report-problem-modal';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import {
@@ -30,6 +31,7 @@ export function Sidebar() {
   const { theme, setTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -178,55 +180,59 @@ export function Sidebar() {
             <DropdownMenuTrigger className="p-3 rounded-xl text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-all duration-200 active:scale-95 cursor-pointer outline-none">
               <Menu className="w-6 h-6 stroke-[2.2]" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="right" className="w-52 rounded-xl border border-zinc-200 dark:border-zinc-800 p-1.5 shadow-lg bg-popover text-popover-foreground">
-              {/* Theme Toggle option */}
-              <DropdownMenuItem
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg cursor-pointer focus:bg-zinc-100 dark:focus:bg-zinc-900"
-              >
-                {theme === 'dark' ? (
-                  <>
-                    <Sun className="w-4 h-4" />
-                    <span>Light Mode</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="w-4 h-4" />
-                    <span>Dark Mode</span>
-                  </>
-                )}
-              </DropdownMenuItem>
+             <DropdownMenuContent align="end" side="right" className="w-52 rounded-xl border border-zinc-200 dark:border-zinc-800 p-1.5 shadow-lg bg-popover text-popover-foreground">
+               {/* Theme Toggle option */}
+               <DropdownMenuItem
+                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                 className="flex items-center justify-between px-3 py-2 text-sm font-semibold rounded-lg cursor-pointer focus:bg-zinc-100 dark:focus:bg-zinc-900"
+               >
+                 <div className="flex items-center gap-2">
+                   {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                   <span>Appearance</span>
+                 </div>
+                 <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
+               </DropdownMenuItem>
 
-              <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-850" />
+               {/* Report a problem */}
+               <DropdownMenuItem
+                 onClick={() => setReportOpen(true)}
+                 className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg cursor-pointer focus:bg-zinc-100 dark:focus:bg-zinc-900"
+               >
+                 <AlertCircle className="w-4 h-4 text-zinc-400 dark:text-zinc-500" />
+                 <span>Report a problem</span>
+               </DropdownMenuItem>
 
-              {/* Login / Logout option */}
-              {user ? (
-                <DropdownMenuItem
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-destructive focus:text-destructive rounded-lg cursor-pointer focus:bg-destructive/10"
-                >
-                  <form action={signOut} className="w-full flex items-center">
-                    <button type="submit" className="w-full flex items-center text-left text-sm font-semibold cursor-pointer text-destructive focus:text-destructive">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Sign Out
-                    </button>
-                  </form>
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() => router.push('/login')}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg cursor-pointer focus:bg-zinc-100 dark:focus:bg-zinc-900"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Sign In</span>
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </aside>
+               <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-850" />
 
-      <ComposeModal open={composeOpen} onOpenChange={setComposeOpen} />
-    </>
+               {/* Login / Logout option */}
+               {user ? (
+                 <DropdownMenuItem
+                   className="flex items-center gap-2 px-3 py-2 text-sm font-semibold text-destructive focus:text-destructive rounded-lg cursor-pointer focus:bg-destructive/10"
+                 >
+                   <form action={signOut} className="w-full flex items-center">
+                     <button type="submit" className="w-full flex items-center text-left text-sm font-semibold cursor-pointer text-destructive focus:text-destructive">
+                       <LogOut className="w-4 h-4 mr-2" />
+                       Sign Out
+                     </button>
+                   </form>
+                 </DropdownMenuItem>
+               ) : (
+                 <DropdownMenuItem
+                   onClick={() => router.push('/login')}
+                   className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg cursor-pointer focus:bg-zinc-100 dark:focus:bg-zinc-900"
+                 >
+                   <LogIn className="w-4 h-4" />
+                   <span>Sign In</span>
+                 </DropdownMenuItem>
+               )}
+             </DropdownMenuContent>
+           </DropdownMenu>
+         </div>
+       </aside>
+ 
+       <ComposeModal open={composeOpen} onOpenChange={setComposeOpen} />
+       <ReportProblemModal open={reportOpen} onOpenChange={setReportOpen} />
+     </>
   );
 }
 

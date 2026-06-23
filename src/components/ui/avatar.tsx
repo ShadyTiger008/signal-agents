@@ -1,109 +1,120 @@
 "use client"
 
 import * as React from "react"
-import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
-
 import { cn } from "@/lib/utils"
 
-function Avatar({
+type AvatarStatus = "loading" | "loaded" | "error"
+
+const AvatarContext = React.createContext<{
+  status: AvatarStatus
+  setStatus: React.Dispatch<React.SetStateAction<AvatarStatus>>
+} | null>(null)
+
+export interface AvatarProps extends React.ComponentPropsWithoutRef<"div"> {
+  size?: "default" | "sm" | "lg"
+}
+
+export function Avatar({
   className,
   size = "default",
+  children,
   ...props
-}: AvatarPrimitive.Root.Props & {
-  size?: "default" | "sm" | "lg"
-}) {
+}: AvatarProps) {
+  const [status, setStatus] = React.useState<AvatarStatus>("loading")
+
   return (
-    <AvatarPrimitive.Root
-      data-slot="avatar"
-      data-size={size}
-      className={cn(
-        "group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten",
-        className
-      )}
-      {...props}
-    />
+    <AvatarContext.Provider value={{ status, setStatus }}>
+      <div
+        data-slot="avatar"
+        data-size={size}
+        className={cn(
+          "relative flex shrink-0 rounded-full select-none overflow-hidden items-center justify-center bg-zinc-100 dark:bg-zinc-850",
+          size === "sm" && "h-6 w-6 text-[10px]",
+          size === "default" && "h-8 w-8 text-xs",
+          size === "lg" && "h-10 w-10 text-sm",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    </AvatarContext.Provider>
   )
 }
 
-function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props) {
-  return (
-    <AvatarPrimitive.Image
-      data-slot="avatar-image"
-      className={cn(
-        "aspect-square size-full rounded-full object-cover",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+export interface AvatarImageProps extends React.ComponentPropsWithoutRef<"img"> {}
 
-function AvatarFallback({
+export function AvatarImage({
   className,
+  src,
+  alt,
   ...props
-}: AvatarPrimitive.Fallback.Props) {
+}: AvatarImageProps) {
+  const context = React.useContext(AvatarContext)
+  const imgRef = React.useRef<HTMLImageElement>(null)
+
+  // Use a ref to access setStatus so we don't trigger unnecessary re-renders in useEffect
+  const setStatusRef = React.useRef(context?.setStatus)
+  React.useEffect(() => {
+    setStatusRef.current = context?.setStatus
+  }, [context?.setStatus])
+
+  React.useEffect(() => {
+    const setStatus = setStatusRef.current
+    if (!src) {
+      setStatus?.("error")
+      return
+    }
+    
+    setStatus?.("loading")
+
+    if (imgRef.current?.complete) {
+      setStatus?.("loaded")
+    }
+  }, [src])
+
+  if (!src || context?.status === "error") return null
+
   return (
-    <AvatarPrimitive.Fallback
+    <img
+      ref={imgRef}
+      src={src}
+      alt={alt}
+      referrerPolicy="no-referrer"
+      onLoad={() => context?.setStatus("loaded")}
+      onError={() => context?.setStatus("error")}
+      className={cn(
+        "aspect-square h-full w-full object-cover rounded-full transition-opacity duration-200 absolute inset-0 z-10",
+        context?.status === "loaded" ? "opacity-100" : "opacity-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export interface AvatarFallbackProps extends React.ComponentPropsWithoutRef<"div"> {}
+
+export function AvatarFallback({
+  className,
+  children,
+  ...props
+}: AvatarFallbackProps) {
+  const context = React.useContext(AvatarContext)
+
+  // Only render the fallback if status is NOT loaded
+  if (context?.status === "loaded") return null
+
+  return (
+    <div
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        "flex h-full w-full items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-850 text-zinc-650 dark:text-zinc-350 font-semibold",
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </div>
   )
-}
-
-function AvatarBadge({ className, ...props }: React.ComponentProps<"span">) {
-  return (
-    <span
-      data-slot="avatar-badge"
-      className={cn(
-        "absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground bg-blend-color ring-2 ring-background select-none",
-        "group-data-[size=sm]/avatar:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden",
-        "group-data-[size=default]/avatar:size-2.5 group-data-[size=default]/avatar:[&>svg]:size-2",
-        "group-data-[size=lg]/avatar:size-3 group-data-[size=lg]/avatar:[&>svg]:size-2",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="avatar-group"
-      className={cn(
-        "group/avatar-group flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function AvatarGroupCount({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="avatar-group-count"
-      className={cn(
-        "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm text-muted-foreground ring-2 ring-background group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-export {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-  AvatarGroup,
-  AvatarGroupCount,
-  AvatarBadge,
 }

@@ -2,6 +2,7 @@ import { getFeedItems } from "@/server/actions/posts";
 import { createClient } from "@/lib/supabase/server";
 import { FeedList } from "@/components/feed-list";
 import { AgentRow } from "@/components/agent-row";
+import { getCachedRecommendedAgents } from "@/lib/supabase/cached-queries";
 import Link from "next/link";
 
 export const revalidate = 0;
@@ -21,14 +22,10 @@ export default async function HomePage({ searchParams }: Props) {
   // Fetch feed posts and recommended agents in parallel
   const [initialItems, recommendedResult] = await Promise.all([
     getFeedItems({ limit: 20, followingOnly: showFollowing }),
-    supabase
-      .from('agents')
-      .select('*, follows:follows(count)')
-      .order('follower_count', { ascending: false })
-      .limit(5)
+    getCachedRecommendedAgents(5)
   ]);
 
-  const recommendedAgents = (recommendedResult.data || []).map((agent: any) => ({
+  const recommendedAgents = (recommendedResult || []).map((agent: any) => ({
     ...agent,
     follower_count: agent.follows?.[0]?.count ?? 0
   }));

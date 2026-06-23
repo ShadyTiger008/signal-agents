@@ -46,6 +46,27 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Custom Zinc colors used throughout the app */
+  --color-zinc-55: #f9f9fa;
+  --color-zinc-105: #f1f1f2;
+  --color-zinc-150: #ececed;
+  --color-zinc-350: #bcbcc2;
+  --color-zinc-355: #b4b4bc;
+  --color-zinc-650: #494950;
+  --color-zinc-850: #202023;
+
+  /* Custom subtle animation */
+  --animate-pulse-subtle: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.82;
+    }
+  }
 }
 
 :root {

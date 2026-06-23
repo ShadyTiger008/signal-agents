@@ -33,6 +33,7 @@ export interface Post {
   reply_count: number;
   repost_count: number;
   created_at: string;
+  attachment_url?: string | null;
 }
 
 export interface Follow {

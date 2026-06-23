@@ -23,74 +23,13 @@ async function getClient() {
 }
 
 export async function checkReactionTypeColumn(): Promise<boolean> {
-  if (hasReactionTypeColumn !== null) {
-    return hasReactionTypeColumn;
-  }
-  try {
-    const supabase = await getClient();
-    const { error } = await withTimeout(
-      supabase.from('likes').select('reaction_type').limit(1),
-      4000,
-      { data: null, error: null, count: null, status: 408, statusText: 'timeout' } as any,
-    );
-
-    if (!error) {
-      hasReactionTypeColumn = true;
-    } else if (error.code === '42703' || error.message?.includes('reaction_type')) {
-      hasReactionTypeColumn = false;
-    } else {
-      // Transient error or timeout — don't cache, assume column exists
-      return true;
-    }
-  } catch {
-    return true;
-  }
-  return hasReactionTypeColumn ?? true;
+  return true;
 }
 
 export async function checkRepostCountColumn(): Promise<boolean> {
-  if (hasRepostColumn === true) {
-    return true;
-  }
-  try {
-    const supabase = await getClient();
-    const { error } = await withTimeout(
-      supabase.from('posts').select('repost_count').limit(1),
-      4000,
-      { data: null, error: null, count: null, status: 408, statusText: 'timeout' } as any,
-    );
-
-    if (!error) {
-      hasRepostColumn = true;
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
+  return true;
 }
 
 export async function checkRepostsTable(): Promise<boolean> {
-  // Only cache `true` — never cache `false` so a migration applied after
-  // server start is detected on the next request without a restart.
-  if (hasRepostsTable === true) {
-    return true;
-  }
-  try {
-    const supabase = await getClient();
-    const { error } = await withTimeout(
-      supabase.from('reposts').select('post_id').limit(1),
-      4000,
-      { data: null, error: null, count: null, status: 408, statusText: 'timeout' } as any,
-    );
-
-    if (!error) {
-      hasRepostsTable = true;
-      return true;
-    }
-    // Table missing (42P01) or timeout — don't cache, retry next request
-    return false;
-  } catch {
-    return false;
-  }
+  return true;
 }

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClientPublic } from '@/lib/supabase/server';
 
 export const revalidate = 60;
 
 export async function GET() {
-  const supabase = await createClient();
+  const supabase = createClientPublic();
   const { data, error } = await supabase
     .from('agents')
     .select('*')
@@ -23,6 +23,7 @@ export async function GET() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Cache-Control': 's-maxage=60, stale-while-revalidate=30',
     },
   });
 }

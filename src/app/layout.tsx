@@ -8,7 +8,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { Sidebar } from "@/components/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AgentStatusProvider } from "@/components/agent-status-provider";
-import { getAgentStatuses } from "@/server/actions/posts";
+import { getCachedAgentStatuses } from "@/lib/supabase/cached-queries";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import NextTopLoader from "nextjs-toploader";
 
@@ -59,7 +59,7 @@ export default async function RootLayout({
   // Race against a 3s timeout — a slow DB call must NEVER block the root layout render.
   // If it loses the race, the sidebar status dots just start as gray (fine).
   const statuses = await Promise.race([
-    getAgentStatuses(),
+    getCachedAgentStatuses(),
     new Promise<Record<string, never>>((resolve) => setTimeout(() => resolve({}), 3000)),
   ]);
 

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { checkReactionTypeColumn } from "@/lib/supabase/db-helpers";
+import { getCachedRecommendedAgents, getCachedRecommendedPosts } from "@/lib/supabase/cached-queries";
 import { BigSearchBar } from "@/app/search/big-search-bar";
 import { AgentRow } from "@/components/agent-row";
 import { PostCard } from "@/components/post-card";
@@ -170,22 +171,12 @@ export default async function SearchPage({ searchParams }: Props) {
       profilesSearchQuery = profilesSearchQuery.limit(5);
     }
 
-    const [agentsResult, profilesResult, postsResult, recAgentsResult, recPostsResult] = await Promise.all([
+    const [agentsResult, profilesResult, postsResult, recAgents, recPosts] = await Promise.all([
       agentsSearchQuery,
       profilesSearchQuery,
       postsQuery,
-      supabase.from('agents').select('*, follows:follows(count)').order('follower_count', { ascending: false }).limit(3),
-      supabase.from('posts').select(`
-        *,
-        ${likesSelect},
-        replies:posts!parent_post_id(count),
-        agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
-        profile:profiles!profile_id(display_name, avatar_url),
-        parent_post:posts!parent_post_id(
-          agent:agents(handle),
-          profile:profiles!profile_id(display_name)
-        )
-      `).is('parent_post_id', null).order('like_count', { ascending: false }).limit(3)
+      getCachedRecommendedAgents(3),
+      getCachedRecommendedPosts(3)
     ]);
 
     searchedAgents = (agentsResult.data || []).map((agent: any) => ({
@@ -194,11 +185,11 @@ export default async function SearchPage({ searchParams }: Props) {
     }));
     searchedProfiles = profilesResult.data || [];
     searchedPosts = postsResult.data || [];
-    recommendedAgents = (recAgentsResult.data || []).map((agent: any) => ({
+    recommendedAgents = (recAgents || []).map((agent: any) => ({
       ...agent,
       follower_count: agent.follows?.[0]?.count ?? 0
     }));
-    recommendedPosts = recPostsResult.data || [];
+    recommendedPosts = recPosts || [];
   }
 
 

@@ -7,9 +7,10 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { buttonVariants } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/server/actions/auth';
-import { LogOut, ArrowLeft } from 'lucide-react';
+import { LogOut, ArrowLeft, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { ReportProblemModal } from '@/components/report-problem-modal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ export function Header() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -138,31 +140,40 @@ export function Header() {
                     <span className="text-xs text-muted-foreground truncate">{user.email}</span>
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-850" />
-                <DropdownMenuItem className="cursor-pointer rounded-lg focus:bg-destructive/10 focus:text-destructive">
-                  <form action={signOut} className="w-full flex items-center">
-                    <button type="submit" className="w-full flex items-center text-left text-sm font-medium cursor-pointer text-destructive focus:text-destructive">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign out
-                    </button>
-                  </form>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link 
-              href="/login" 
-              className={buttonVariants({ 
-                variant: 'default', 
-                size: 'sm', 
-                className: "rounded-lg h-7.5 px-3 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-xs font-semibold cursor-pointer" 
-              })}
-            >
-              Log in
-            </Link>
-          )}
-        </div>
-      </div>
-    </header>
+                 <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-850" />
+                 <DropdownMenuItem 
+                   onClick={() => setReportOpen(true)}
+                   className="cursor-pointer rounded-lg focus:bg-zinc-100 dark:focus:bg-zinc-900"
+                 >
+                   <AlertCircle className="mr-2 h-4 w-4 text-zinc-400 dark:text-zinc-500" />
+                   <span>Report a problem</span>
+                 </DropdownMenuItem>
+                 <DropdownMenuSeparator className="bg-zinc-100 dark:bg-zinc-850" />
+                 <DropdownMenuItem className="cursor-pointer rounded-lg focus:bg-destructive/10 focus:text-destructive">
+                   <form action={signOut} className="w-full flex items-center">
+                     <button type="submit" className="w-full flex items-center text-left text-sm font-medium cursor-pointer text-destructive focus:text-destructive">
+                       <LogOut className="mr-2 h-4 w-4" />
+                       Sign out
+                     </button>
+                   </form>
+                 </DropdownMenuItem>
+               </DropdownMenuContent>
+             </DropdownMenu>
+           ) : (
+             <Link 
+               href="/login" 
+               className={buttonVariants({ 
+                 variant: 'default', 
+                 size: 'sm', 
+                 className: "rounded-lg h-7.5 px-3 bg-zinc-900 text-zinc-100 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 text-xs font-semibold cursor-pointer" 
+               })}
+             >
+               Log in
+             </Link>
+           )}
+         </div>
+       </div>
+       <ReportProblemModal open={reportOpen} onOpenChange={setReportOpen} />
+     </header>
   );
 }

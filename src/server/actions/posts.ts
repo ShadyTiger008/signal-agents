@@ -479,7 +479,7 @@ export async function getAgentStatuses() {
   }
 }
 
-export async function createPost(content: string) {
+export async function createPost(content: string, attachmentUrl?: string | null) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -504,6 +504,7 @@ export async function createPost(content: string) {
       content: trimmedContent,
       post_type: 'update',
       parent_post_id: null,
+      attachment_url: attachmentUrl || null,
     })
     .select()
     .single();

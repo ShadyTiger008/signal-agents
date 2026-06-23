@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { checkReactionTypeColumn, checkRepostsTable } from "@/lib/supabase/db-helpers";
+import { getCachedRecommendedPosts } from "@/lib/supabase/cached-queries";
 import { PostCard } from "@/components/post-card";
 import { ThreadRepliesSection } from "@/components/thread-replies-section";
 import { AgentAvatar } from "@/components/agent-avatar";
@@ -53,31 +54,35 @@ export default async function PostDetailPage({ params }: Props) {
   const hasReactions = await checkReactionTypeColumn();
   const likesSelect = hasReactions ? 'likes:likes(reaction_type)' : 'likes:likes(count)';
 
-  // 1. Fetch User Auth state & Profile
-  const userAndProfile = await getCurrentUser();
+  // 1. Fetch User state, Target post, and Recommended posts in parallel!
+  const [userAndProfile, postResult, cachedRecommendedResult] = await Promise.all([
+    getCurrentUser(),
+    supabase
+      .from('posts')
+      .select(`
+        *,
+        ${likesSelect},
+        replies:posts!parent_post_id(count),
+        agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
+        profile:profiles!profile_id(display_name, avatar_url)
+      `)
+      .eq('id', id)
+      .maybeSingle(),
+    getCachedRecommendedPosts(6)
+  ]);
+
   const user = userAndProfile?.user || null;
   const currentUserProfile = userAndProfile?.profile || null;
   const isAuthenticated = !!user;
 
-
-  // 2. Fetch target post
-  const { data: post, error } = await supabase
-    .from('posts')
-    .select(`
-      *,
-      ${likesSelect},
-      replies:posts!parent_post_id(count),
-      agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
-      profile:profiles!profile_id(display_name, avatar_url)
-    `)
-    .eq('id', id)
-    .maybeSingle();
+  const post = postResult.data;
+  const error = postResult.error;
 
   if (error || !post) {
     notFound();
   }
 
-  // 3. Fetch parent post and replies in parallel
+  // 2. Fetch parent post and replies in parallel
   const [parentResult, repliesResult] = await Promise.all([
     post.parent_post_id
       ? supabase
@@ -112,52 +117,15 @@ export default async function PostDetailPage({ params }: Props) {
   const parentPost = parentResult.data as any;
   const replies = repliesResult.data || [];
 
-  // 4. Fetch Recommended Posts of the same category (post_type)
-  const { data: recommendedPostsData } = await supabase
-    .from('posts')
-    .select(`
-      *,
-      ${likesSelect},
-      replies:posts!parent_post_id(count),
-      agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
-      profile:profiles!profile_id(display_name, avatar_url),
-      parent_post:posts!parent_post_id(
-        agent:agents(handle),
-        profile:profiles!profile_id(display_name)
-      )
-    `)
-    .eq('post_type', post.post_type)
-    .neq('id', post.id)
-    .is('parent_post_id', null)
-    .order('created_at', { ascending: false })
-    .limit(3);
+  // Filter out the current post from recommended posts, sort by post_type match first, and limit to 3
+  const otherPosts = (cachedRecommendedResult || []).filter((p: any) => p.id !== post.id);
+  const recommendedPosts = [...otherPosts].sort((a: any, b: any) => {
+    const aMatch = a.post_type === post.post_type ? 1 : 0;
+    const bMatch = b.post_type === post.post_type ? 1 : 0;
+    return bMatch - aMatch;
+  }).slice(0, 3);
 
-  let recommendedPosts = recommendedPostsData || [];
-  if (recommendedPosts.length < 3) {
-    const { data: fallbackPosts } = await supabase
-      .from('posts')
-      .select(`
-        *,
-        ${likesSelect},
-        replies:posts!parent_post_id(count),
-        agent:agents(handle, display_name, avatar_url, is_verified, agent_type),
-        profile:profiles!profile_id(display_name, avatar_url),
-        parent_post:posts!parent_post_id(
-          agent:agents(handle),
-          profile:profiles!profile_id(display_name)
-        )
-      `)
-      .neq('id', post.id)
-      .is('parent_post_id', null)
-      .order('created_at', { ascending: false })
-      .limit(3 - recommendedPosts.length);
-      
-    if (fallbackPosts) {
-      recommendedPosts = [...recommendedPosts, ...fallbackPosts];
-    }
-  }
-
-  // 5. Batch query likes and follows for all posts shown
+  // 3. Batch query likes and follows for all posts shown
   const postIds = [post.id];
   if (parentPost) postIds.push(parentPost.id);
   replies.forEach(r => postIds.push(r.id));
@@ -225,7 +193,7 @@ export default async function PostDetailPage({ params }: Props) {
     is_following_agent: r.agent_id ? followedAgentIds.includes(r.agent_id) : false,
     likes: hasReactions ? r.likes : undefined
   }));
-  const recommendedPostsWithLike = recommendedPosts.map(r => ({
+  const recommendedPostsWithLike = recommendedPosts.map((r: any) => ({
     ...r,
     like_count: hasReactions ? (r.likes?.length ?? 0) : (r.likes?.[0]?.count ?? 0),
     reply_count: r.replies?.[0]?.count ?? 0,
@@ -332,9 +300,15 @@ export default async function PostDetailPage({ params }: Props) {
                     ) : (
                       <>
                         <span className="font-bold text-sm">{displayName}</span>
-                        <span className="font-mono text-[10px] tracking-tight px-1.5 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-muted-foreground select-none">
-                          Human
-                        </span>
+                        {currentUserProfile?.id === post.profile_id ? (
+                          <span className="font-mono text-[10px] font-bold tracking-tight px-1.5 py-0.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 dark:bg-cyan-950/40 select-none shadow-[0_0_8px_rgba(6,182,212,0.15)] animate-pulse-subtle">
+                            You
+                          </span>
+                        ) : (
+                          <span className="font-mono text-[10px] tracking-tight px-1.5 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-muted-foreground select-none">
+                            Human
+                          </span>
+                        )}
                       </>
                     )}
                   </div>
@@ -352,6 +326,18 @@ export default async function PostDetailPage({ params }: Props) {
             <p className="text-zinc-900 dark:text-zinc-100 text-lg md:text-[19px] leading-relaxed whitespace-pre-wrap break-words font-sans select-text">
               {post.content}
             </p>
+
+            {/* Attachment Image */}
+            {post.attachment_url && (
+              <div className="mt-2.5 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
+                <img 
+                  src={post.attachment_url} 
+                  alt="Post attachment" 
+                  className="max-h-[360px] w-full object-cover select-none transition-transform duration-300 hover:scale-[1.01]"
+                  loading="lazy"
+                />
+              </div>
+            )}
 
             {/* Date / Timestamp & Reading Time */}
             <div className="flex items-center space-x-2 text-xs text-muted-foreground font-mono select-none">

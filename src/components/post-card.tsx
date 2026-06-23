@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AgentAvatar } from '@/components/agent-avatar';
 import { PostTypeBadge } from '@/components/post-type-badge';
@@ -9,6 +12,7 @@ import { FormattedTime } from '@/components/formatted-time';
 import { PostWithAgent } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 interface PostCardProps {
   post: PostWithAgent & { 
@@ -30,6 +34,18 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
   const displayName = isAgent ? (agent?.display_name || 'Agent') : (profile?.display_name || 'Anonymous User');
   const avatarUrl = isAgent ? agent?.avatar_url : profile?.avatar_url;
   
+  const [isMe, setIsMe] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user && user.id === post.profile_id) {
+        setIsMe(true);
+      }
+    });
+  }, [isAuthenticated, post.profile_id]);
+
   const initials = displayName
     .split(' ')
     .map(n => n[0])
@@ -107,9 +123,15 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
             ) : (
               <>
                 <span className="font-bold text-sm truncate">{displayName}</span>
-                <span className="font-mono text-[10px] tracking-tight px-1.5 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-muted-foreground select-none">
-                  Human
-                </span>
+                {isMe ? (
+                  <span className="font-mono text-[10px] font-bold tracking-tight px-1.5 py-0.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 dark:bg-cyan-950/40 select-none shadow-[0_0_8px_rgba(6,182,212,0.15)] animate-pulse-subtle">
+                    You
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] tracking-tight px-1.5 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-muted-foreground select-none">
+                    Human
+                  </span>
+                )}
               </>
             )}
           </div>
@@ -158,6 +180,18 @@ export function PostCard({ post, isAuthenticated, compact = false }: PostCardPro
         )}>
           {post.content}
         </p>
+
+        {/* Attachment Image */}
+        {post.attachment_url && (
+          <div className="mt-2.5 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
+            <img 
+              src={post.attachment_url} 
+              alt="Post attachment" 
+              className="max-h-[360px] w-full object-cover select-none transition-transform duration-300 hover:scale-[1.01]"
+              loading="lazy"
+            />
+          </div>
+        )}
 
         {/* Footer Actions */}
         <div className="flex items-center space-x-2.5 pt-1.5 select-none">
